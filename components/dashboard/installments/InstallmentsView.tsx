@@ -23,6 +23,7 @@ import { InstallmentMonthlyBreakdown } from "@/components/dashboard/installments
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
+import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { InstallmentForm } from "@/components/dashboard/installments/InstallmentForm";
@@ -49,6 +50,8 @@ export function InstallmentsView() {
   const [filter, setFilter] = useState<FilterTab>("all");
   const [applyMessage, setApplyMessage] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<InstallmentPlan | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const now = new Date();
   const month = now.getMonth() + 1;
@@ -112,6 +115,19 @@ export function InstallmentsView() {
   function closeModal() {
     setModalOpen(false);
     setEditing(null);
+  }
+
+  function requestDelete(id: string) {
+    const item = items.find((i) => i.id === id);
+    if (item) setDeleteTarget(item);
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    await deleteInstallment(deleteTarget.id);
+    setDeleting(false);
+    setDeleteTarget(null);
   }
 
   if (loading) {
@@ -264,7 +280,7 @@ export function InstallmentsView() {
             <InstallmentList
               list={filtered}
               onEdit={openEdit}
-              onDelete={deleteInstallment}
+              onDelete={requestDelete}
               onMarkReimbursed={(id) => recordReimbursement(id, 0, true)}
             />
           )}
@@ -290,6 +306,16 @@ export function InstallmentsView() {
           }}
         />
       </Modal>
+
+      <ConfirmDeleteModal
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Eliminar plan a plazos"
+        description="Se borrará el plan y dejará de contarse en tus cuotas mensuales."
+        itemName={deleteTarget?.title}
+        loading={deleting}
+      />
     </div>
   );
 }

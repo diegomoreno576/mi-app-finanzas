@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Modal } from "@/components/ui/modal";
+import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { TransactionForm } from "@/components/dashboard/transactions/TransactionForm";
@@ -31,7 +32,8 @@ export function TransactionsView() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   function openCreate() {
     setEditing(null);
@@ -48,11 +50,16 @@ export function TransactionsView() {
     setEditing(null);
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("¿Eliminar esta transacción?")) return;
-    setDeletingId(id);
-    await deleteTransaction(id);
-    setDeletingId(null);
+  function requestDelete(tx: Transaction) {
+    setDeleteTarget(tx);
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    await deleteTransaction(deleteTarget.id);
+    setDeleting(false);
+    setDeleteTarget(null);
   }
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -231,8 +238,8 @@ export function TransactionsView() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDelete(tx.id)}
-                            disabled={deletingId === tx.id}
+                            onClick={() => requestDelete(tx)}
+                            disabled={deleting && deleteTarget?.id === tx.id}
                             aria-label="Eliminar"
                           >
                             <Trash2 className="h-4 w-4 text-red-400" />
@@ -299,6 +306,20 @@ export function TransactionsView() {
           }}
         />
       </Modal>
+
+      <ConfirmDeleteModal
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Eliminar transacción"
+        description="Se borrará del historial y afectará al balance del mes."
+        itemName={
+          deleteTarget
+            ? `${deleteTarget.description || deleteTarget.category} · ${formatCurrency(Number(deleteTarget.amount))}`
+            : undefined
+        }
+        loading={deleting}
+      />
     </div>
   );
 }

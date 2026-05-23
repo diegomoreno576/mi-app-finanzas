@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { Modal } from "@/components/ui/modal";
+import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 
@@ -38,6 +39,10 @@ export function BudgetsView() {
   const [amount, setAmount] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<BudgetWithDetails | null>(
+    null
+  );
+  const [deleting, setDeleting] = useState(false);
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1);
   const currentYear = new Date().getFullYear();
@@ -90,6 +95,14 @@ export function BudgetsView() {
     setEditingBudget(null);
     setSelectedCategoryId("");
     setAmount("");
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    await deleteBudget(deleteTarget.id);
+    setDeleting(false);
+    setDeleteTarget(null);
   }
 
   function getProgressColor(percent: number) {
@@ -239,11 +252,7 @@ export function BudgetsView() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => {
-                            if (confirm("¿Eliminar este presupuesto?")) {
-                              deleteBudget(budget.id);
-                            }
-                          }}
+                          onClick={() => setDeleteTarget(budget)}
                         >
                           Eliminar
                         </Button>
@@ -324,6 +333,16 @@ export function BudgetsView() {
           </div>
         </form>
       </Modal>
+
+      <ConfirmDeleteModal
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Eliminar presupuesto"
+        description="Se quitará el límite de esta categoría para el mes seleccionado."
+        itemName={deleteTarget?.category?.name}
+        loading={deleting}
+      />
     </div>
   );
 }

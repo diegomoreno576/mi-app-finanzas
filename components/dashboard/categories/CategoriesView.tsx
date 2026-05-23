@@ -7,6 +7,7 @@ import { CategoryIcon } from "@/lib/icons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
+import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { CategoryForm } from "@/components/dashboard/categories/CategoryForm";
@@ -25,7 +26,7 @@ function CategorySection({
   categories: Category[];
   onAdd: (type: CategoryType) => void;
   onEdit: (cat: Category) => void;
-  onDelete: (id: string) => void;
+  onDelete: (cat: Category) => void;
 }) {
   return (
     <div className="space-y-4">
@@ -68,7 +69,7 @@ function CategorySection({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => onDelete(cat.id)}
+                    onClick={() => onDelete(cat)}
                     aria-label="Eliminar"
                   >
                     <Trash2 className="h-4 w-4 text-red-400" />
@@ -96,6 +97,8 @@ export function CategoriesView() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
   const [defaultType, setDefaultType] = useState<CategoryType>("expense");
+  const [deleteTarget, setDeleteTarget] = useState<Category | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   function openCreate(type: CategoryType) {
     setEditing(null);
@@ -113,9 +116,16 @@ export function CategoriesView() {
     setEditing(null);
   }
 
-  async function handleDelete(id: string) {
-    if (!confirm("¿Eliminar esta categoría?")) return;
-    await deleteCategory(id);
+  function requestDelete(cat: Category) {
+    setDeleteTarget(cat);
+  }
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    await deleteCategory(deleteTarget.id);
+    setDeleting(false);
+    setDeleteTarget(null);
   }
 
   if (loading) {
@@ -152,7 +162,7 @@ export function CategoriesView() {
         categories={getByType("expense")}
         onAdd={openCreate}
         onEdit={openEdit}
-        onDelete={handleDelete}
+        onDelete={requestDelete}
       />
 
       <CategorySection
@@ -161,7 +171,7 @@ export function CategoriesView() {
         categories={getByType("income")}
         onAdd={openCreate}
         onEdit={openEdit}
-        onDelete={handleDelete}
+        onDelete={requestDelete}
       />
 
       <Modal
@@ -182,6 +192,16 @@ export function CategoriesView() {
           }}
         />
       </Modal>
+
+      <ConfirmDeleteModal
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Eliminar categoría"
+        description="Se eliminará la categoría y no podrás usarla en nuevas transacciones."
+        itemName={deleteTarget?.name}
+        loading={deleting}
+      />
     </div>
   );
 }

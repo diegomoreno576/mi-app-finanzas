@@ -7,6 +7,7 @@ import { useCategories } from "@/lib/hooks/useCategories";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
+import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { RecurringForm } from "@/components/dashboard/recurring/RecurringForm";
@@ -40,6 +41,23 @@ export function RecurringView() {
   const [editing, setEditing] = useState<RecurringTransaction | null>(null);
   const [applyMessage, setApplyMessage] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<RecurringTransaction | null>(
+    null
+  );
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    await deleteRecurring(deleteTarget.id);
+    setDeleting(false);
+    setDeleteTarget(null);
+  }
+
+  function requestDelete(id: string) {
+    const item = items.find((i) => i.id === id);
+    if (item) setDeleteTarget(item);
+  }
 
   const now = new Date();
   const month = now.getMonth() + 1;
@@ -144,7 +162,7 @@ export function RecurringView() {
         items={items}
         onAdd={openCreateSubscription}
         onEdit={openEdit}
-        onDelete={deleteRecurring}
+        onDelete={requestDelete}
         onToggleActive={toggleActive}
       />
 
@@ -204,7 +222,7 @@ export function RecurringView() {
                 <RecurringList
                   list={otherExpenses}
                   onEdit={openEdit}
-                  onDelete={deleteRecurring}
+                  onDelete={requestDelete}
                   onToggleActive={toggleActive}
                 />
               </CardContent>
@@ -219,7 +237,7 @@ export function RecurringView() {
                 <RecurringList
                   list={otherIncomes}
                   onEdit={openEdit}
-                  onDelete={deleteRecurring}
+                  onDelete={requestDelete}
                   onToggleActive={toggleActive}
                 />
               </CardContent>
@@ -259,6 +277,16 @@ export function RecurringView() {
           }}
         />
       </Modal>
+
+      <ConfirmDeleteModal
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Eliminar fijo mensual"
+        description="Se quitará la plantilla y dejará de generarse automáticamente."
+        itemName={deleteTarget?.description || deleteTarget?.category}
+        loading={deleting}
+      />
     </div>
   );
 }

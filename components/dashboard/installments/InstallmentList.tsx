@@ -125,11 +125,7 @@ export function InstallmentList({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => {
-                      if (confirm("¿Eliminar este plan a plazos?")) {
-                        onDelete(item.id);
-                      }
-                    }}
+                    onClick={() => onDelete(item.id)}
                   >
                     <Trash2 className="h-4 w-4 text-red-400" />
                   </Button>

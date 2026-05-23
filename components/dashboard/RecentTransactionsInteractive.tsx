@@ -8,6 +8,7 @@ import { useCategories } from "@/lib/hooks/useCategories";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
+import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { TransactionForm } from "@/components/dashboard/transactions/TransactionForm";
 import type { Transaction, TransactionFormData } from "@/types";
@@ -23,7 +24,8 @@ export function RecentTransactionsInteractive({
   const { categories } = useCategories();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Transaction | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function saveTransaction(id: string, data: TransactionFormData) {
     const supabase = createClient();
@@ -49,19 +51,23 @@ export function RecentTransactionsInteractive({
     return { error: null };
   }
 
-  async function removeTransaction(id: string) {
-    if (!confirm("¿Eliminar esta transacción?")) return;
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
 
-    setDeletingId(id);
+    setDeleting(true);
     const supabase = createClient();
-    const { error } = await supabase.from("transactions").delete().eq("id", id);
-    setDeletingId(null);
+    const { error } = await supabase
+      .from("transactions")
+      .delete()
+      .eq("id", deleteTarget.id);
+    setDeleting(false);
 
     if (error) {
       alert(error.message);
       return;
     }
 
+    setDeleteTarget(null);
     router.refresh();
   }
 
@@ -128,8 +134,8 @@ export function RecentTransactionsInteractive({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => removeTransaction(tx.id)}
-                  disabled={deletingId === tx.id}
+                  onClick={() => setDeleteTarget(tx)}
+                  disabled={deleting && deleteTarget?.id === tx.id}
                   aria-label="Eliminar"
                 >
                   <Trash2 className="h-4 w-4 text-red-400" />
@@ -168,6 +174,20 @@ export function RecentTransactionsInteractive({
           />
         )}
       </Modal>
+
+      <ConfirmDeleteModal
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleConfirmDelete}
+        title="Eliminar transacción"
+        description="Se borrará del historial y afectará al balance del mes."
+        itemName={
+          deleteTarget
+            ? `${deleteTarget.description || deleteTarget.category} · ${formatCurrency(Number(deleteTarget.amount))}`
+            : undefined
+        }
+        loading={deleting}
+      />
     </>
   );
 }
