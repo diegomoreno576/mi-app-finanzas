@@ -11,14 +11,16 @@ import {
 
 export function usePwaInstall() {
   const deferredPrompt = useRef<BeforeInstallPromptEvent | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
   const [isIos, setIsIos] = useState(false);
   const [iosSafari, setIosSafari] = useState(false);
   const [hasNativePrompt, setHasNativePrompt] = useState(false);
 
   useEffect(() => {
-    if (!canShowInstallUi()) {
-      setVisible(false);
+    setMounted(true);
+
+    if (!canShowInstallUi() || isStandaloneMode()) {
       return;
     }
 
@@ -28,7 +30,6 @@ export function usePwaInstall() {
 
     if (ios) {
       setVisible(true);
-      return;
     }
 
     const onBeforeInstall = (event: Event) => {
@@ -71,11 +72,14 @@ export function usePwaInstall() {
 
   const hide = useCallback(() => setVisible(false), []);
 
+  const showButton =
+    mounted && visible && !isStandaloneMode();
+
   return {
-    visible: visible && !isStandaloneMode(),
+    visible: showButton,
     isIos,
     iosSafari,
-    hasNativePrompt: Boolean(deferredPrompt.current),
+    hasNativePrompt,
     installAndroid,
     hide,
   };

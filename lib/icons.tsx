@@ -1,5 +1,27 @@
 import type { CSSProperties } from "react";
-import { icons, type LucideIcon } from "lucide-react";
+import {
+  Briefcase,
+  Car,
+  Circle,
+  CircleDollarSign,
+  Coffee,
+  CreditCard,
+  Gamepad2,
+  Gift,
+  GraduationCap,
+  HeartPulse,
+  Home,
+  Laptop,
+  MoreHorizontal,
+  Plane,
+  PiggyBank,
+  Shirt,
+  ShoppingCart,
+  TrendingUp,
+  Utensils,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react";
 
 export const CATEGORY_ICON_OPTIONS = [
   "utensils",
@@ -24,17 +46,31 @@ export const CATEGORY_ICON_OPTIONS = [
   "circle",
 ] as const;
 
-function toPascalCase(name: string): string {
-  return name
-    .split("-")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join("");
-}
+const ICON_MAP: Record<string, LucideIcon> = {
+  utensils: Utensils,
+  car: Car,
+  home: Home,
+  "heart-pulse": HeartPulse,
+  "gamepad-2": Gamepad2,
+  shirt: Shirt,
+  "graduation-cap": GraduationCap,
+  "more-horizontal": MoreHorizontal,
+  briefcase: Briefcase,
+  laptop: Laptop,
+  "trending-up": TrendingUp,
+  "circle-dollar-sign": CircleDollarSign,
+  "shopping-cart": ShoppingCart,
+  coffee: Coffee,
+  plane: Plane,
+  gift: Gift,
+  wallet: Wallet,
+  "credit-card": CreditCard,
+  "piggy-bank": PiggyBank,
+  circle: Circle,
+};
 
 export function getCategoryIcon(name: string): LucideIcon {
-  const pascal = toPascalCase(name);
-  const Icon = icons[pascal as keyof typeof icons];
-  return Icon ?? icons.Circle;
+  return ICON_MAP[name] ?? Circle;
 }
 
 interface CategoryIconProps {
@@ -44,6 +80,6 @@ interface CategoryIconProps {
 }
 
 export function CategoryIcon({ name, className, style }: CategoryIconProps) {
-  const Icon = getCategoryIcon(name);
+  const Icon = ICON_MAP[name] ?? Circle;
   return <Icon className={className} style={style} />;
 }

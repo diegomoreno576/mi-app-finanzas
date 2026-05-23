@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,11 +45,6 @@ export function TransactionForm({
   const [form, setForm] = useState<TransactionFormData>(() => toFormData(initial));
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    setForm(toFormData(initial));
-    setError(null);
-  }, [initial]);
 
   const filteredCategories = categories.filter((c) => c.type === form.type);
 

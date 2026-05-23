@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run icons && next build",
     "start": "next start",
     "lint": "eslint",
     "icons": "node scripts/generate-pwa-icons.mjs"
