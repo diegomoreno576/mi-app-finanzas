@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Menu, Wallet, X } from "lucide-react";
 import { useState } from "react";
 import { navItems } from "@/components/dashboard/nav-items";
+import { InstallAppButton } from "@/components/pwa/InstallAppButton";
 import { cn } from "@/lib/utils";
 
 export function MobileNav() {
@@ -57,6 +58,9 @@ export function MobileNav() {
                 </Link>
               );
             })}
+            <div className="mt-4 border-t border-slate-700/50 pt-4">
+              <InstallAppButton variant="sidebar" />
+            </div>
           </nav>
         </>
       )}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Wallet } from "lucide-react";
 import { navItems } from "@/components/dashboard/nav-items";
+import { InstallAppButton } from "@/components/pwa/InstallAppButton";
 import { cn } from "@/lib/utils";
 
 export function Sidebar() {
@@ -41,6 +42,9 @@ export function Sidebar() {
           );
         })}
       </nav>
+      <div className="border-t border-slate-700/50 p-4">
+        <InstallAppButton variant="sidebar" />
+      </div>
     </aside>
   );
 }
