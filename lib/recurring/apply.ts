@@ -26,15 +26,26 @@ export async function applyRecurringForMonth(
 
   if (recurringError || !recurring?.length) return 0;
 
-  const { data: existing } = await supabase
-    .from("recurring_generations")
-    .select("recurring_id")
-    .eq("user_id", userId)
-    .eq("month", month)
-    .eq("year", year);
+  const [{ data: existing }, { data: skipped }] = await Promise.all([
+    supabase
+      .from("recurring_generations")
+      .select("recurring_id")
+      .eq("user_id", userId)
+      .eq("month", month)
+      .eq("year", year),
+    supabase
+      .from("recurring_month_skips")
+      .select("recurring_id")
+      .eq("user_id", userId)
+      .eq("month", month)
+      .eq("year", year),
+  ]);
 
   const appliedIds = new Set(
     (existing ?? []).map((row) => row.recurring_id as string)
+  );
+  const skippedIds = new Set(
+    (skipped ?? []).map((row) => row.recurring_id as string)
   );
 
   const { start, end } = getMonthBounds(year, month);
@@ -57,7 +68,7 @@ export async function applyRecurringForMonth(
   }
 
   for (const item of recurring as RecurringTransaction[]) {
-    if (appliedIds.has(item.id)) continue;
+    if (appliedIds.has(item.id) || skippedIds.has(item.id)) continue;
 
     const { data: existingInMonth } = await supabase
       .from("transactions")

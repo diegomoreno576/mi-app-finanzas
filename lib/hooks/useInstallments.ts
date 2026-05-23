@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { applyInstallmentsForMonth } from "@/lib/installments/apply";
+import { deleteTransactionsForInstallment } from "@/lib/transactions/delete-linked";
 import type {
   InstallmentFormData,
   InstallmentPlan,
@@ -207,6 +208,13 @@ export function useInstallments() {
 
   async function deleteInstallment(id: string) {
     const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { error: "No autenticado" };
+
+    await deleteTransactionsForInstallment(supabase, user.id, id);
+
     const { error: deleteError } = await supabase
       .from("installment_plans")
       .delete()

@@ -171,11 +171,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const currentMonthClose = displaySummary.balance;
   const displayBalance = carryover.balance + currentMonthClose;
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div className="space-y-5 sm:space-y-8">
+      <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-          <p className="text-slate-400">Resumen de tus finanzas</p>
+          <h1 className="text-xl font-bold text-white sm:text-2xl">Dashboard</h1>
+          <p className="text-sm text-slate-400">Resumen de tus finanzas</p>
         </div>
         <Suspense fallback={null}>
           <DashboardMonthPicker month={safeMonth} year={safeYear} />

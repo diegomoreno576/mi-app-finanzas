@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { applyRecurringForMonth } from "@/lib/recurring/apply";
+import { deleteTransactionsForRecurring } from "@/lib/transactions/delete-linked";
 import type { RecurringFormData, RecurringTransaction } from "@/types";
 
 export function useRecurring() {
@@ -155,6 +156,13 @@ export function useRecurring() {
 
   async function deleteRecurring(id: string) {
     const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { error: "No autenticado" };
+
+    await deleteTransactionsForRecurring(supabase, user.id, id);
+
     const { error: deleteError } = await supabase
       .from("recurring_transactions")
       .delete()

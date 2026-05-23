@@ -26,8 +26,8 @@ export function DashboardMonthPicker({ month, year }: DashboardMonthPickerProps)
   }
 
   return (
-    <div className="flex flex-wrap gap-3">
-      <div className="min-w-[160px] flex-1 space-y-1 sm:max-w-xs">
+    <div className="grid w-full grid-cols-2 gap-3">
+      <div className="min-w-0 space-y-1">
         <label className="text-xs text-slate-400">Mes del resumen</label>
         <Select
           value={month}
@@ -40,7 +40,7 @@ export function DashboardMonthPicker({ month, year }: DashboardMonthPickerProps)
           ))}
         </Select>
       </div>
-      <div className="min-w-[100px] space-y-1 sm:max-w-[120px]">
+      <div className="min-w-0 space-y-1">
         <label className="text-xs text-slate-400">Año</label>
         <Select
           value={year}

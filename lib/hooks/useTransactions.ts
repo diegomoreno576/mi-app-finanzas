@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { getMonthBounds, shouldAutoApplyMonth } from "@/lib/dashboard";
 import { applyRecurringForMonth } from "@/lib/recurring/apply";
 import { applyInstallmentsForMonth } from "@/lib/installments/apply";
+import { deleteTransactionWithSources } from "@/lib/transactions/delete-linked";
 import type { Transaction, TransactionFormData, TransactionType } from "@/types";
 
 const PAGE_SIZE = 10;
@@ -156,12 +157,13 @@ export function useTransactions(initialFilters?: Partial<TransactionFilterState>
 
   async function deleteTransaction(id: string) {
     const supabase = createClient();
-    const { error: deleteError } = await supabase
-      .from("transactions")
-      .delete()
-      .eq("id", id);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { error: "No autenticado" };
 
-    if (deleteError) return { error: deleteError.message };
+    const result = await deleteTransactionWithSources(supabase, user.id, id);
+    if (result.error) return { error: result.error };
 
     await fetchTransactions();
     router.refresh();

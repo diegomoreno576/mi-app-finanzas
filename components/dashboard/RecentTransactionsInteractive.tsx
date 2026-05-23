@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Pencil, Trash2, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { deleteTransactionWithSources } from "@/lib/transactions/delete-linked";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -56,14 +57,24 @@ export function RecentTransactionsInteractive({
 
     setDeleting(true);
     const supabase = createClient();
-    const { error } = await supabase
-      .from("transactions")
-      .delete()
-      .eq("id", deleteTarget.id);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      setDeleting(false);
+      return;
+    }
+
+    const result = await deleteTransactionWithSources(
+      supabase,
+      user.id,
+      deleteTarget.id
+    );
     setDeleting(false);
 
-    if (error) {
-      alert(error.message);
+    if (result.error) {
+      alert(result.error);
       return;
     }
 
