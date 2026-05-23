@@ -166,6 +166,22 @@ export function getLastSixMonths(): { month: number; year: number; label: string
   return months;
 }
 
+/** Una sola nómina por mes en el resumen (evita duplicados en BD). */
+export function dedupeSalaryTransactions(transactions: Transaction[]): Transaction[] {
+  const salaryRows = transactions.filter(
+    (t) => t.type === "income" && t.category === "Salario"
+  );
+  if (salaryRows.length <= 1) return transactions;
+
+  const keepId = salaryRows.sort(
+    (a, b) => a.date.localeCompare(b.date) || a.created_at.localeCompare(b.created_at)
+  )[0].id;
+  const skip = new Set(
+    salaryRows.filter((t) => t.id !== keepId).map((t) => t.id)
+  );
+  return transactions.filter((t) => !skip.has(t.id));
+}
+
 export function calculateMonthlySummary(
   transactions: Transaction[]
 ): MonthlySummary {

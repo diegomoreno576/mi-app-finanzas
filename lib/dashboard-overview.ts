@@ -189,6 +189,31 @@ export function projectedMonthlyBalance(
   );
 }
 
+/** Suma de cierres mensuales (compromisos − plazos) hasta el mes indicado. */
+export function computeCarryoverFromCommitments(
+  recurring: RecurringTransaction[],
+  installments: InstallmentPlan[],
+  fromMonth: MonthRef,
+  throughMonth: MonthRef
+): number {
+  let total = 0;
+  let current = fromMonth;
+
+  while (compareMonths(current, throughMonth) <= 0) {
+    const overview = buildDashboardOverview(
+      recurring,
+      installments,
+      current.month,
+      current.year
+    );
+    total += projectedMonthlyBalance(overview);
+    if (compareMonths(current, throughMonth) === 0) break;
+    current = getNextMonth(current);
+  }
+
+  return total;
+}
+
 /** Cuotas a plazos propias ya registradas como gastos en el mes. */
 export function installmentOwnExpensesInMonth(
   transactions: Transaction[],

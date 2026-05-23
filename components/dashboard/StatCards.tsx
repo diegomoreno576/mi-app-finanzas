@@ -9,6 +9,7 @@ interface StatCardsProps {
   monthLabel: string;
   carryover?: PreviousMonthCarryover;
   displayBalance?: number;
+  currentMonthClose?: number;
   installmentMonthlyCommitment?: number;
 }
 
@@ -17,6 +18,7 @@ export function StatCards({
   monthLabel,
   carryover,
   displayBalance,
+  currentMonthClose,
   installmentMonthlyCommitment = 0,
 }: StatCardsProps) {
   const carryoverAmount = carryover?.balance ?? 0;
@@ -48,9 +50,11 @@ export function StatCards({
         carryover?.label != null
           ? `${carryover.label} (tras cuotas): ${carryoverAmount > 0 ? "+" : "−"}${formatCurrency(Math.abs(carryoverAmount))}`
           : null,
-        installmentMonthlyCommitment > 0
-          ? `Este mes tras plazos: −${formatCurrency(installmentMonthlyCommitment)}`
-          : null,
+        currentMonthClose != null
+          ? `Este mes disponible: ${formatCurrency(currentMonthClose)}`
+          : installmentMonthlyCommitment > 0
+            ? `Este mes tras plazos: −${formatCurrency(installmentMonthlyCommitment)}`
+            : null,
       ]
         .filter(Boolean)
         .join(" · ") || undefined,

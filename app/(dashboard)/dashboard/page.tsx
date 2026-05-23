@@ -3,12 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import {
   buildMonthlyComparisons,
   calculateMonthlySummary,
+  dedupeSalaryTransactions,
   getCurrentMonthYear,
   getLastSixMonths,
-  getCarryoverFetchStart,
   getMonthBounds,
   earliestMonth,
-  monthKey,
   getPreviousMonth,
   getPreviousMonthCarryover,
   groupExpensesByCategory,
@@ -21,10 +20,8 @@ import { applyRecurringForMonth } from "@/lib/recurring/apply";
 import { applyInstallmentsForMonth } from "@/lib/installments/apply";
 import {
   buildDashboardOverview,
-  buildInstallmentGenIdsByMonth,
-  computeDisplayBalanceThroughMonth,
-  computeTotalDisplayBalance,
-  installmentOwnExpensesInMonth,
+  computeCarryoverFromCommitments,
+  projectedMonthlyBalance,
 } from "@/lib/dashboard-overview";
 import { StatCards } from "@/components/dashboard/StatCards";
 import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
@@ -64,8 +61,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   const { start, end } = getMonthBounds(safeYear, safeMonth);
   const prev = getPreviousMonth(safeYear, safeMonth);
-  const { end: prevEnd } = getMonthBounds(prev.year, prev.month);
-  const carryoverFetchStart = getCarryoverFetchStart(safeMonth, safeYear);
   const sixMonthsAgo = getLastSixMonths()[0];
   const historyStart = getMonthBounds(
     sixMonthsAgo.year,
@@ -75,7 +70,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const [
     { data: monthTransactions },
     { data: allTransactions },
-    { data: carryoverTransactions },
     { data: recent },
     { data: recurringItems },
     { data: installmentPlans },
@@ -94,12 +88,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         .select("*")
         .eq("user_id", user.id)
         .gte("date", historyStart),
-      supabase
-        .from("transactions")
-        .select("*")
-        .eq("user_id", user.id)
-        .gte("date", carryoverFetchStart)
-        .lte("date", prevEnd),
       supabase
         .from("transactions")
         .select("*")
@@ -132,11 +120,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         .eq("user_id", user.id),
     ]);
 
-  const monthTx = (monthTransactions ?? []) as Transaction[];
+  const monthTx = dedupeSalaryTransactions(
+    (monthTransactions ?? []) as Transaction[]
+  );
   const historyTx = (allTransactions ?? []) as Transaction[];
   const recentTx = (recent ?? []) as Transaction[];
 
   const summary = calculateMonthlySummary(monthTx);
+  const recurringItemsList = (recurringItems ?? []) as RecurringTransaction[];
+  const installmentPlansList = (installmentPlans ?? []) as InstallmentPlan[];
   const generationMonths = [
     ...((recurringGens ?? []) as { month: number; year: number }[]),
     ...((installmentGens ?? []) as { month: number; year: number }[]),
@@ -145,13 +137,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     earliestTx?.date,
     earliestMonth(generationMonths)
   );
-  const installmentGenMap = buildInstallmentGenIdsByMonth(
-    (installmentGens ?? []) as {
-      month: number;
-      year: number;
-      transaction_id: string;
-    }[]
-  );
   const expensesByCategory = groupExpensesByCategory(monthTx);
   const monthlyComparison = buildMonthlyComparisons(
     historyTx,
@@ -159,32 +144,18 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   );
   const monthLabel = getMonthName(safeMonth, safeYear);
   const overview = buildDashboardOverview(
-    (recurringItems ?? []) as RecurringTransaction[],
-    (installmentPlans ?? []) as InstallmentPlan[],
+    recurringItemsList,
+    installmentPlansList,
     safeMonth,
     safeYear
   );
-  const monthlyInstallmentTotal = overview.installments.monthlyPaymentTotal;
-
-  const carryoverRangeStart = firstTrackedMonth
-    ? getMonthBounds(firstTrackedMonth.year, firstTrackedMonth.month).start
-    : null;
-  const carryoverTx =
-    firstTrackedMonth &&
-    shouldShowPreviousMonthCarryover(prev, firstTrackedMonth) &&
-    carryoverRangeStart
-      ? ((carryoverTransactions ?? []) as Transaction[]).filter(
-          (tx) => tx.date >= carryoverRangeStart
-        )
-      : [];
 
   const carryoverBalance =
     firstTrackedMonth &&
     shouldShowPreviousMonthCarryover(prev, firstTrackedMonth)
-      ? computeDisplayBalanceThroughMonth(
-          carryoverTx,
-          installmentGenMap,
-          monthlyInstallmentTotal,
+      ? computeCarryoverFromCommitments(
+          recurringItemsList,
+          installmentPlansList,
           firstTrackedMonth,
           prev
         )
@@ -195,18 +166,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     firstTrackedMonth,
   });
 
-  const monthInstallmentTxIds =
-    installmentGenMap.get(monthKey(safeMonth, safeYear)) ?? [];
-  const installmentInExpenses = installmentOwnExpensesInMonth(
-    monthTx,
-    monthInstallmentTxIds
-  );
-  const displayBalance = computeTotalDisplayBalance(
-    carryover.balance,
-    summary,
-    monthlyInstallmentTotal,
-    installmentInExpenses
-  );
+  const currentMonthClose = projectedMonthlyBalance(overview);
+  const displayBalance = carryover.balance + currentMonthClose;
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -224,6 +185,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         monthLabel={monthLabel}
         carryover={carryover}
         displayBalance={displayBalance}
+        currentMonthClose={currentMonthClose}
         installmentMonthlyCommitment={overview.installments.monthlyPaymentTotal}
       />
 
