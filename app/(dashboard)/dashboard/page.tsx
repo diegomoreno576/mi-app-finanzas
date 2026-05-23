@@ -20,6 +20,7 @@ import { applyRecurringForMonth } from "@/lib/recurring/apply";
 import { applyInstallmentsForMonth } from "@/lib/installments/apply";
 import {
   buildDashboardOverview,
+  buildDisplayMonthSummary,
   computeCarryoverFromCommitments,
   projectedMonthlyBalance,
 } from "@/lib/dashboard-overview";
@@ -149,6 +150,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     safeMonth,
     safeYear
   );
+  const displaySummary = buildDisplayMonthSummary(overview, summary);
 
   const carryoverBalance =
     firstTrackedMonth &&
@@ -166,7 +168,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     firstTrackedMonth,
   });
 
-  const currentMonthClose = projectedMonthlyBalance(overview);
+  const currentMonthClose = displaySummary.balance;
   const displayBalance = carryover.balance + currentMonthClose;
   return (
     <div className="space-y-8">
@@ -181,7 +183,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       </div>
 
       <StatCards
-        summary={summary}
+        summary={displaySummary}
         monthLabel={monthLabel}
         carryover={carryover}
         displayBalance={displayBalance}

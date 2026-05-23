@@ -22,7 +22,12 @@ import {
   reimbursementPending,
   totalPaidByUser,
 } from "@/lib/installments/helpers";
-import type { InstallmentPlan, RecurringTransaction, Transaction } from "@/types";
+import type {
+  InstallmentPlan,
+  MonthlySummary,
+  RecurringTransaction,
+  Transaction,
+} from "@/types";
 
 export interface RecurringOverview {
   salaryConfigured: boolean;
@@ -187,6 +192,38 @@ export function projectedMonthlyBalance(
     recurring.monthlyExpenseCommitment -
     installments.monthlyPaymentTotal
   );
+}
+
+/** Resumen coherente: ingresos − (fijos + plazos propios) = balance del mes. */
+export function buildDisplayMonthSummary(
+  overview: DashboardOverviewData,
+  transactionSummary: MonthlySummary
+): MonthlySummary {
+  const { recurring, installments } = overview;
+  const hasAutomaticCommitments =
+    recurring.monthlyIncomeCommitment > 0 ||
+    recurring.monthlyExpenseCommitment > 0;
+
+  if (hasAutomaticCommitments) {
+    const income =
+      recurring.monthlyIncomeCommitment || transactionSummary.income;
+    const expense =
+      recurring.monthlyExpenseCommitment +
+      installments.monthlyPaymentTotal;
+    return {
+      income,
+      expense,
+      balance: income - expense,
+    };
+  }
+
+  const expense =
+    transactionSummary.expense + installments.monthlyPaymentTotal;
+  return {
+    income: transactionSummary.income,
+    expense,
+    balance: transactionSummary.income - expense,
+  };
 }
 
 /** Suma de cierres mensuales (compromisos − plazos) hasta el mes indicado. */

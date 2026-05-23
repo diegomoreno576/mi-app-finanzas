@@ -39,6 +39,10 @@ export function StatCards({
       icon: ArrowDownLeft,
       color: "text-red-400",
       bg: "bg-red-500/10",
+      hint:
+        installmentMonthlyCommitment > 0
+          ? `Incluye plazos propios (${formatCurrency(installmentMonthlyCommitment)}/mes)`
+          : undefined,
     },
     {
       label: "Balance",
