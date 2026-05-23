@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { toLocalDateString } from "@/lib/dashboard";
+import { getMonthBounds, toLocalDateString } from "@/lib/dashboard";
+import { isSalaryRecurring } from "@/lib/recurring/salary";
 import type { RecurringTransaction } from "@/types";
 
 function getDayInMonth(day: number, month: number, year: number): number {
@@ -37,10 +38,46 @@ export async function applyRecurringForMonth(
     (existing ?? []).map((row) => row.recurring_id as string)
   );
 
+  const { start, end } = getMonthBounds(year, month);
   let created = 0;
+
+  async function linkGeneration(
+    recurringId: string,
+    transactionId: string
+  ): Promise<boolean> {
+    const { error: genError } = await supabase
+      .from("recurring_generations")
+      .insert({
+        recurring_id: recurringId,
+        user_id: userId,
+        month,
+        year,
+        transaction_id: transactionId,
+      });
+    return !genError;
+  }
 
   for (const item of recurring as RecurringTransaction[]) {
     if (appliedIds.has(item.id)) continue;
+
+    if (isSalaryRecurring(item)) {
+      const { data: existingSalary } = await supabase
+        .from("transactions")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("type", "income")
+        .eq("category", "Salario")
+        .gte("date", start)
+        .lte("date", end)
+        .limit(1);
+
+      if (existingSalary?.[0]) {
+        if (await linkGeneration(item.id, existingSalary[0].id as string)) {
+          created++;
+        }
+        continue;
+      }
+    }
 
     const date = buildRecurringDate(item.day_of_month, month, year);
 
@@ -59,17 +96,9 @@ export async function applyRecurringForMonth(
 
     if (txError || !transaction) continue;
 
-    const { error: genError } = await supabase
-      .from("recurring_generations")
-      .insert({
-        recurring_id: item.id,
-        user_id: userId,
-        month,
-        year,
-        transaction_id: transaction.id,
-      });
-
-    if (!genError) created++;
+    if (await linkGeneration(item.id, transaction.id as string)) {
+      created++;
+    }
   }
 
   return created;

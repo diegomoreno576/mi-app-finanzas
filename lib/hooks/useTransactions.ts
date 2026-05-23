@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { getMonthBounds } from "@/lib/dashboard";
+import { getMonthBounds, shouldAutoApplyMonth } from "@/lib/dashboard";
 import { applyRecurringForMonth } from "@/lib/recurring/apply";
 import { applyInstallmentsForMonth } from "@/lib/installments/apply";
 import type { Transaction, TransactionFormData, TransactionType } from "@/types";
@@ -49,18 +49,20 @@ export function useTransactions(initialFilters?: Partial<TransactionFilterState>
       return;
     }
 
-    await applyRecurringForMonth(
-      supabase,
-      user.id,
-      filters.month,
-      filters.year
-    );
-    await applyInstallmentsForMonth(
-      supabase,
-      user.id,
-      filters.month,
-      filters.year
-    );
+    if (shouldAutoApplyMonth(filters.month, filters.year)) {
+      await applyRecurringForMonth(
+        supabase,
+        user.id,
+        filters.month,
+        filters.year
+      );
+      await applyInstallmentsForMonth(
+        supabase,
+        user.id,
+        filters.month,
+        filters.year
+      );
+    }
 
     const { start, end } = getMonthBounds(filters.year, filters.month);
     const from = (filters.page - 1) * PAGE_SIZE;

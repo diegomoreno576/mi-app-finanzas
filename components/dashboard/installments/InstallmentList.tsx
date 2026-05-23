@@ -68,13 +68,16 @@ export function InstallmentList({
                 </div>
                 <p className="mt-1 text-sm text-slate-500">
                   Total {formatCurrency(Number(item.total_amount))} ·{" "}
-                  {formatCurrency(Number(item.installment_amount))}/cuota
-                  {item.purpose === "shared" && (
-                    <>
-                      {" "}
-                      · tu parte {formatCurrency(myInstallmentAmount(item))}
-                    </>
-                  )}
+                  {formatCurrency(myInstallmentAmount(item))}/mes
+                  {item.purpose === "shared" &&
+                    Number(item.installment_amount) !==
+                      myInstallmentAmount(item) && (
+                      <>
+                        {" "}
+                        (cuota total{" "}
+                        {formatCurrency(Number(item.installment_amount))})
+                      </>
+                    )}
                 </p>
                 <div className="mt-3 space-y-1">
                   <div className="flex justify-between text-xs text-slate-500">

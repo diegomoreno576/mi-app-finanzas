@@ -176,6 +176,14 @@ export function DashboardOverview({ data, monthLabel }: DashboardOverviewProps) 
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg bg-red-600/10 px-3 py-2">
+                <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                  Pagas al mes
+                </div>
+                <p className="mt-1 font-semibold text-red-300">
+                  {formatCurrency(installments.monthlyPaymentTotal)}
+                </p>
+              </div>
               <div className="rounded-lg bg-violet-600/10 px-3 py-2">
                 <div className="flex items-center gap-1.5 text-xs text-slate-400">
                   <Wallet className="h-3.5 w-3.5" />

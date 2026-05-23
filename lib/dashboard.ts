@@ -31,6 +31,122 @@ export function getCurrentMonthYear() {
   return { month: now.getMonth() + 1, year: now.getFullYear() };
 }
 
+export interface MonthRef {
+  month: number;
+  year: number;
+}
+
+export function getPreviousMonth(year: number, month: number): MonthRef {
+  const d = new Date(year, month - 2, 1);
+  return { month: d.getMonth() + 1, year: d.getFullYear() };
+}
+
+export function getNextMonth({ month, year }: MonthRef): MonthRef {
+  const d = new Date(year, month - 1, 1);
+  d.setMonth(d.getMonth() + 1);
+  return { month: d.getMonth() + 1, year: d.getFullYear() };
+}
+
+export function monthKey(month: number, year: number): string {
+  return `${year}-${String(month).padStart(2, "0")}`;
+}
+
+export function compareMonths(a: MonthRef, b: MonthRef): number {
+  if (a.year !== b.year) return a.year - b.year;
+  return a.month - b.month;
+}
+
+export function isMonthBefore(a: MonthRef, b: MonthRef): boolean {
+  return compareMonths(a, b) < 0;
+}
+
+/** Solo genera fijos/cuotas en el mes actual o futuros (no rellena meses pasados). */
+export function shouldAutoApplyMonth(month: number, year: number): boolean {
+  const now = getCurrentMonthYear();
+  return compareMonths({ month, year }, now) >= 0;
+}
+
+export function monthFromDateString(date: string): MonthRef {
+  const [y, m] = date.split("-").map(Number);
+  return { month: m, year: y };
+}
+
+export function getFirstTrackedMonth(
+  earliestTransactionDate: string | null | undefined
+): MonthRef | null {
+  if (!earliestTransactionDate) return null;
+  return monthFromDateString(earliestTransactionDate);
+}
+
+export function earliestMonth(months: MonthRef[]): MonthRef | null {
+  if (!months.length) return null;
+  return months.reduce((min, m) => (isMonthBefore(m, min) ? m : min));
+}
+
+/** Mes en el que empezaste a usar la app (prioriza generaciones automáticas). */
+export function resolveFirstTrackedMonth(
+  earliestTransactionDate: string | null | undefined,
+  earliestGenerationMonth: MonthRef | null
+): MonthRef | null {
+  const fromTransactions = getFirstTrackedMonth(earliestTransactionDate);
+
+  if (earliestGenerationMonth) {
+    return earliestGenerationMonth;
+  }
+
+  return fromTransactions;
+}
+
+export function shouldShowPreviousMonthCarryover(
+  previousMonth: MonthRef,
+  firstTrackedMonth: MonthRef | null
+): boolean {
+  if (!firstTrackedMonth) return false;
+  return compareMonths(previousMonth, firstTrackedMonth) >= 0;
+}
+
+export interface PreviousMonthCarryover {
+  balance: number;
+  label: "Restante del mes anterior" | "Deuda del mes anterior" | null;
+}
+
+export function getPreviousMonthCarryover(
+  previousMonthBalance: number,
+  options: {
+    previousMonth: MonthRef;
+    firstTrackedMonth: MonthRef | null;
+  }
+): PreviousMonthCarryover {
+  if (
+    !shouldShowPreviousMonthCarryover(
+      options.previousMonth,
+      options.firstTrackedMonth
+    )
+  ) {
+    return { balance: 0, label: null };
+  }
+
+  if (previousMonthBalance > 0) {
+    return {
+      balance: previousMonthBalance,
+      label: "Restante del mes anterior",
+    };
+  }
+  if (previousMonthBalance < 0) {
+    return {
+      balance: previousMonthBalance,
+      label: "Deuda del mes anterior",
+    };
+  }
+  return { balance: 0, label: null };
+}
+
+/** Inicio de ventana para calcular arrastres (hasta 12 meses antes del mes visto). */
+export function getCarryoverFetchStart(viewMonth: number, viewYear: number): string {
+  const d = new Date(viewYear, viewMonth - 13, 1);
+  return getMonthBounds(d.getFullYear(), d.getMonth() + 1).start;
+}
+
 export function getLastSixMonths(): { month: number; year: number; label: string; key: string }[] {
   const months: { month: number; year: number; label: string; key: string }[] = [];
   const now = new Date();

@@ -1,3 +1,11 @@
+import {
+  calculateMonthlySummary,
+  compareMonths,
+  getMonthBounds,
+  getNextMonth,
+  monthKey,
+  type MonthRef,
+} from "@/lib/dashboard";
 import { findMonthlySalary, isSalaryRecurring } from "@/lib/recurring/salary";
 import {
   filterSubscriptions,
@@ -5,13 +13,16 @@ import {
   subscriptionMonthlyTotal,
 } from "@/lib/recurring/subscriptions";
 import {
+  dueThisMonthTotal,
   getNextInstallment,
+  monthlyPaymentTotal,
   myInstallmentAmount,
   providerLabel,
   remainingAmount,
   reimbursementPending,
+  totalPaidByUser,
 } from "@/lib/installments/helpers";
-import type { InstallmentPlan, RecurringTransaction } from "@/types";
+import type { InstallmentPlan, RecurringTransaction, Transaction } from "@/types";
 
 export interface RecurringOverview {
   salaryConfigured: boolean;
@@ -37,6 +48,8 @@ export interface InstallmentDueItem {
 
 export interface InstallmentsOverview {
   totalRemaining: number;
+  monthlyPaymentTotal: number;
+  totalPaid: number;
   dueThisMonthCount: number;
   dueThisMonthAmount: number;
   pendingReimbursement: number;
@@ -139,6 +152,8 @@ export function buildInstallmentsOverview(
       (sum, plan) => sum + remainingAmount(plan),
       0
     ),
+    monthlyPaymentTotal: monthlyPaymentTotal(activePlans),
+    totalPaid: totalPaidByUser(plans),
     dueThisMonthCount: dueThisMonth.length,
     dueThisMonthAmount: dueThisMonth.reduce((sum, item) => sum + item.amount, 0),
     pendingReimbursement: plans.reduce(
@@ -170,6 +185,106 @@ export function projectedMonthlyBalance(
   return (
     recurring.monthlyIncomeCommitment -
     recurring.monthlyExpenseCommitment -
-    installments.dueThisMonthAmount
+    installments.monthlyPaymentTotal
   );
+}
+
+/** Cuotas a plazos propias ya registradas como gastos en el mes. */
+export function installmentOwnExpensesInMonth(
+  transactions: Transaction[],
+  generationTransactionIds: string[]
+): number {
+  const ids = new Set(generationTransactionIds);
+  return transactions
+    .filter((tx) => tx.type === "expense" && ids.has(tx.id))
+    .reduce((sum, tx) => sum + Number(tx.amount), 0);
+}
+
+/** Balance tras reservar lo que pagas al mes a plazos (sin doble contar gastos ya registrados). */
+export function balanceAfterOwnInstallments(
+  balance: number,
+  monthlyOwnInstallmentTotal: number,
+  alreadyInExpenses: number
+): number {
+  if (monthlyOwnInstallmentTotal <= 0) return balance;
+  return balance - monthlyOwnInstallmentTotal + alreadyInExpenses;
+}
+
+/** Cierre de un solo mes (ingresos − gastos − plazos propios del mes). */
+export function computeMonthDisplayBalance(
+  summary: { balance: number },
+  monthlyOwnInstallmentTotal: number,
+  installmentInExpenses: number
+): number {
+  return balanceAfterOwnInstallments(
+    summary.balance,
+    monthlyOwnInstallmentTotal,
+    installmentInExpenses
+  );
+}
+
+/**
+ * Balance total = lo que quedó el mes anterior (ya con plazos pagados)
+ * + cierre de este mes (misma lógica, sin volver a descontar plazos del arrastre).
+ */
+export function computeTotalDisplayBalance(
+  carryoverFromPreviousMonth: number,
+  monthSummary: { balance: number },
+  monthlyOwnInstallmentTotal: number,
+  installmentInExpenses: number
+): number {
+  const currentMonth = computeMonthDisplayBalance(
+    monthSummary,
+    monthlyOwnInstallmentTotal,
+    installmentInExpenses
+  );
+  return carryoverFromPreviousMonth + currentMonth;
+}
+
+export function buildInstallmentGenIdsByMonth(
+  generations: { month: number; year: number; transaction_id: string }[]
+): Map<string, string[]> {
+  const map = new Map<string, string[]>();
+  for (const row of generations) {
+    const key = monthKey(row.month, row.year);
+    const list = map.get(key) ?? [];
+    list.push(row.transaction_id);
+    map.set(key, list);
+  }
+  return map;
+}
+
+/**
+ * Balance disponible al cierre de un mes (tras cuotas a plazos),
+ * encadenando arrastres desde el primer mes con datos.
+ */
+export function computeDisplayBalanceThroughMonth(
+  transactions: Transaction[],
+  installmentGenIdsByMonth: Map<string, string[]>,
+  monthlyOwnInstallmentTotal: number,
+  fromMonth: MonthRef,
+  throughMonth: MonthRef
+): number {
+  let carryIn = 0;
+  let current = fromMonth;
+
+  while (compareMonths(current, throughMonth) <= 0) {
+    const { start, end } = getMonthBounds(current.year, current.month);
+    const monthTx = transactions.filter((t) => t.date >= start && t.date <= end);
+    const summary = calculateMonthlySummary(monthTx);
+    const genIds =
+      installmentGenIdsByMonth.get(monthKey(current.month, current.year)) ?? [];
+    const inExpenses = installmentOwnExpensesInMonth(monthTx, genIds);
+
+    carryIn = balanceAfterOwnInstallments(
+      summary.balance + carryIn,
+      monthlyOwnInstallmentTotal,
+      inExpenses
+    );
+
+    if (compareMonths(current, throughMonth) === 0) break;
+    current = getNextMonth(current);
+  }
+
+  return carryIn;
 }

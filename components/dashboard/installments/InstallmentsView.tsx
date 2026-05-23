@@ -1,15 +1,25 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarClock, HandCoins, Plus, Wallet } from "lucide-react";
+import {
+  CalendarClock,
+  HandCoins,
+  Plus,
+  TrendingDown,
+  Wallet,
+} from "lucide-react";
 import { useInstallments } from "@/lib/hooks/useInstallments";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { formatCurrency } from "@/lib/format";
 import {
+  buildMonthlyBreakdownByPerson,
+  dueThisMonthTotal,
   getNextInstallment,
+  monthlyPaymentTotal,
   remainingAmount,
   reimbursementPending,
 } from "@/lib/installments/helpers";
+import { InstallmentMonthlyBreakdown } from "@/components/dashboard/installments/InstallmentMonthlyBreakdown";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Modal } from "@/components/ui/modal";
@@ -60,10 +70,16 @@ export function InstallmentsView() {
     (sum, item) => sum + reimbursementPending(item),
     0
   );
-  const dueThisMonth = activePlans.filter((item) => {
-      const next = getNextInstallment(item);
-      return next?.month === month && next?.year === year;
-    }).length;
+  const monthlyTotal = monthlyPaymentTotal(activePlans);
+  const dueThisMonthAmount = dueThisMonthTotal(activePlans, month, year);
+  const dueThisMonthCount = activePlans.filter((item) => {
+    const next = getNextInstallment(item);
+    return next?.month === month && next?.year === year;
+  }).length;
+  const monthlyBreakdown = useMemo(
+    () => buildMonthlyBreakdownByPerson(items),
+    [items]
+  );
 
   async function handleApplyMonth() {
     setApplying(true);
@@ -124,7 +140,25 @@ export function InstallmentsView() {
         </Button>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="border-red-500/30 bg-red-600/10">
+          <CardContent className="flex gap-3 p-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-600/30">
+              <TrendingDown className="h-5 w-5 text-red-400" />
+            </div>
+            <div>
+              <p className="text-sm text-slate-400">Pagas al mes</p>
+              <p className="text-xl font-bold text-red-300">
+                {formatCurrency(monthlyTotal)}
+              </p>
+              <p className="text-xs text-slate-500">
+                Tu gasto a plazos (sin favores) · {activePlans.filter((i) => i.purpose !== "favor").length}{" "}
+                plan
+                {activePlans.filter((i) => i.purpose !== "favor").length === 1 ? "" : "es"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
         <Card className="border-violet-500/30 bg-violet-600/10">
           <CardContent className="flex gap-3 p-4">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-600/30">
@@ -148,7 +182,16 @@ export function InstallmentsView() {
             </div>
             <div>
               <p className="text-sm text-slate-400">Cuotas este mes</p>
-              <p className="text-xl font-bold text-indigo-300">{dueThisMonth}</p>
+              <p className="text-xl font-bold text-indigo-300">
+                {dueThisMonthCount > 0
+                  ? formatCurrency(dueThisMonthAmount)
+                  : formatCurrency(0)}
+              </p>
+              <p className="text-xs text-slate-500">
+                {dueThisMonthCount > 0
+                  ? `${dueThisMonthCount} cuota${dueThisMonthCount === 1 ? "" : "s"} · resta del balance al aplicar`
+                  : "Ninguna vence este mes"}
+              </p>
               <Button
                 variant="ghost"
                 size="sm"
@@ -175,6 +218,8 @@ export function InstallmentsView() {
           </CardContent>
         </Card>
       </div>
+
+      <InstallmentMonthlyBreakdown breakdown={monthlyBreakdown} />
 
       {applyMessage && (
         <div className="rounded-lg border border-violet-500/30 bg-violet-600/10 px-4 py-3 text-sm text-violet-200">
