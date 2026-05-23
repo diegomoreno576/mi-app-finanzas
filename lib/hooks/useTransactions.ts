@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getMonthBounds } from "@/lib/dashboard";
+import { applyRecurringForMonth } from "@/lib/recurring/apply";
+import { applyInstallmentsForMonth } from "@/lib/installments/apply";
 import type { Transaction, TransactionFormData, TransactionType } from "@/types";
 
 const PAGE_SIZE = 10;
@@ -46,6 +48,19 @@ export function useTransactions(initialFilters?: Partial<TransactionFilterState>
       setLoading(false);
       return;
     }
+
+    await applyRecurringForMonth(
+      supabase,
+      user.id,
+      filters.month,
+      filters.year
+    );
+    await applyInstallmentsForMonth(
+      supabase,
+      user.id,
+      filters.month,
+      filters.year
+    );
 
     const { start, end } = getMonthBounds(filters.year, filters.month);
     const from = (filters.page - 1) * PAGE_SIZE;

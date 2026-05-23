@@ -72,6 +72,10 @@ export function TransactionsView() {
             {getMonthName(filters.month, filters.year)} · {totalCount}{" "}
             {totalCount === 1 ? "registro" : "registros"}
           </p>
+          <p className="mt-1 text-xs text-slate-500">
+            La nómina, suscripciones y cuotas se registran solas en sus secciones.
+            Aquí solo ingresos extra y gastos puntuales.
+          </p>
         </div>
         <Button onClick={openCreate}>
           <Plus className="h-4 w-4" />

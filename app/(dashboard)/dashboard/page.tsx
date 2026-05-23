@@ -9,13 +9,17 @@ import {
   groupExpensesByCategory,
 } from "@/lib/dashboard";
 import { formatCurrency, getMonthName } from "@/lib/format";
+import { applyRecurringForMonth } from "@/lib/recurring/apply";
+import { applyInstallmentsForMonth } from "@/lib/installments/apply";
+import { buildDashboardOverview } from "@/lib/dashboard-overview";
 import { StatCards } from "@/components/dashboard/StatCards";
+import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
 import { ExpenseDonutChart } from "@/components/dashboard/ExpenseDonutChart";
 import { IncomeExpenseBarChart } from "@/components/dashboard/IncomeExpenseBarChart";
 import { RecentTransactionsInteractive } from "@/components/dashboard/RecentTransactionsInteractive";
 import { DashboardMonthPicker } from "@/components/dashboard/DashboardMonthPicker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type { Transaction } from "@/types";
+import type { InstallmentPlan, RecurringTransaction, Transaction } from "@/types";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +43,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   if (!user) return null;
 
+  await applyRecurringForMonth(supabase, user.id, safeMonth, safeYear);
+  await applyInstallmentsForMonth(supabase, user.id, safeMonth, safeYear);
+
   const { start, end } = getMonthBounds(safeYear, safeMonth);
   const sixMonthsAgo = getLastSixMonths()[0];
   const historyStart = getMonthBounds(
@@ -46,8 +53,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     sixMonthsAgo.month
   ).start;
 
-  const [{ data: monthTransactions }, { data: allTransactions }, { data: recent }] =
-    await Promise.all([
+  const [
+    { data: monthTransactions },
+    { data: allTransactions },
+    { data: recent },
+    { data: recurringItems },
+    { data: installmentPlans },
+  ] = await Promise.all([
       supabase
         .from("transactions")
         .select("*")
@@ -66,6 +78,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         .order("date", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(5),
+      supabase
+        .from("recurring_transactions")
+        .select("*")
+        .eq("user_id", user.id),
+      supabase
+        .from("installment_plans")
+        .select("*")
+        .eq("user_id", user.id),
     ]);
 
   const monthTx = (monthTransactions ?? []) as Transaction[];
@@ -79,6 +99,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     getLastSixMonths()
   );
   const monthLabel = getMonthName(safeMonth, safeYear);
+  const overview = buildDashboardOverview(
+    (recurringItems ?? []) as RecurringTransaction[],
+    (installmentPlans ?? []) as InstallmentPlan[],
+    safeMonth,
+    safeYear
+  );
 
   return (
     <div className="space-y-8">
@@ -93,6 +119,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       </div>
 
       <StatCards summary={summary} monthLabel={monthLabel} />
+
+      <DashboardOverview data={overview} monthLabel={monthLabel} />
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
