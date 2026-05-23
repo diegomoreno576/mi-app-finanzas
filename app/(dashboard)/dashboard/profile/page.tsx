@@ -1,11 +1,14 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { ProfileView } from "@/components/dashboard/profile/ProfileView";
 
-export default async function Home() {
+export default async function ProfilePage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  redirect(user ? "/dashboard" : "/login");
+  if (!user) redirect("/login");
+
+  return <ProfileView email={user.email ?? ""} />;
 }
