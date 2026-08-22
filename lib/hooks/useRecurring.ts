@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { applyRecurringForMonth } from "@/lib/recurring/apply";
+import { syncRecurringFromCurrentMonthForward } from "@/lib/recurring/sync";
 import { deleteTransactionsForRecurring } from "@/lib/transactions/delete-linked";
+import { shouldAutoApplyMonth } from "@/lib/dashboard";
 import type { RecurringFormData, RecurringTransaction } from "@/types";
 
 export function useRecurring() {
@@ -112,6 +114,11 @@ export function useRecurring() {
 
   async function updateRecurring(id: string, form: RecurringFormData) {
     const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { error: "No autenticado" };
+
     const amount = parseFloat(form.amount);
     const day = parseInt(form.day_of_month, 10);
 
@@ -134,6 +141,8 @@ export function useRecurring() {
       .eq("id", id);
 
     if (updateError) return { error: updateError.message };
+
+    await syncRecurringFromCurrentMonthForward(supabase, user.id, id, form);
 
     await fetchRecurring();
     router.refresh();
@@ -176,6 +185,13 @@ export function useRecurring() {
   }
 
   async function applyForMonth(month: number, year: number) {
+    if (!shouldAutoApplyMonth(month, year)) {
+      return {
+        error: "Los fijos solo se aplican al mes actual o meses futuros.",
+        created: 0,
+      };
+    }
+
     const supabase = createClient();
     const {
       data: { user },

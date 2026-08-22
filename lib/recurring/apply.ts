@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getMonthBounds, toLocalDateString } from "@/lib/dashboard";
-import type { RecurringTransaction } from "@/types";
+import { getMonthBounds, shouldAutoApplyMonth, toLocalDateString } from "@/lib/dashboard";
+import { matchesRecurringItem } from "@/lib/recurring/dedupe";
+import type { RecurringTransaction, Transaction } from "@/types";
 
 function getDayInMonth(day: number, month: number, year: number): number {
   const lastDay = new Date(year, month, 0).getDate();
@@ -18,6 +19,8 @@ export async function applyRecurringForMonth(
   month: number,
   year: number
 ): Promise<number> {
+  if (!shouldAutoApplyMonth(month, year)) return 0;
+
   const { data: recurring, error: recurringError } = await supabase
     .from("recurring_transactions")
     .select("*")
@@ -51,6 +54,15 @@ export async function applyRecurringForMonth(
   const { start, end } = getMonthBounds(year, month);
   let created = 0;
 
+  const { data: monthTransactions } = await supabase
+    .from("transactions")
+    .select("*")
+    .eq("user_id", userId)
+    .gte("date", start)
+    .lte("date", end);
+
+  const monthTx = (monthTransactions ?? []) as Transaction[];
+
   async function linkGeneration(
     recurringId: string,
     transactionId: string
@@ -70,18 +82,9 @@ export async function applyRecurringForMonth(
   for (const item of recurring as RecurringTransaction[]) {
     if (appliedIds.has(item.id) || skippedIds.has(item.id)) continue;
 
-    const { data: existingInMonth } = await supabase
-      .from("transactions")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("type", item.type)
-      .eq("category", item.category)
-      .gte("date", start)
-      .lte("date", end)
-      .limit(1);
-
-    if (existingInMonth?.[0]) {
-      if (await linkGeneration(item.id, existingInMonth[0].id as string)) {
+    const existingMatch = monthTx.find((tx) => matchesRecurringItem(tx, item));
+    if (existingMatch) {
+      if (await linkGeneration(item.id, existingMatch.id)) {
         created++;
       }
       continue;

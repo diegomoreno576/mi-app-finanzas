@@ -9,8 +9,6 @@ interface StatCardsProps {
   summary: MonthlySummary;
   monthLabel: string;
   carryover?: PreviousMonthCarryover;
-  displayBalance?: number;
-  currentMonthClose?: number;
   installmentMonthlyCommitment?: number;
 }
 
@@ -18,23 +16,14 @@ export function StatCards({
   summary,
   monthLabel,
   carryover,
-  displayBalance,
-  currentMonthClose,
   installmentMonthlyCommitment = 0,
 }: StatCardsProps) {
   const carryoverAmount = carryover?.balance ?? 0;
-  const totalBalance =
-    displayBalance ?? summary.balance + carryoverAmount;
+  const monthBalance = summary.income - summary.expense;
 
   const hintLines = [
-    carryover?.label != null
-      ? `${carryover.label}: ${carryoverAmount > 0 ? "+" : "−"}${formatCurrency(Math.abs(carryoverAmount))}`
-      : null,
     installmentMonthlyCommitment > 0
       ? `Plazos incluidos: ${formatCurrency(installmentMonthlyCommitment)}/mes`
-      : null,
-    currentMonthClose != null
-      ? `Disponible este mes: ${formatCurrency(currentMonthClose)}`
       : null,
   ].filter(Boolean) as string[];
 
@@ -56,10 +45,10 @@ export function StatCards({
       span: "",
     },
     {
-      label: "Balance",
-      value: totalBalance,
+      label: "Balance del mes",
+      value: monthBalance,
       icon: Wallet,
-      color: totalBalance >= 0 ? "text-emerald-400" : "text-red-400",
+      color: monthBalance >= 0 ? "text-emerald-400" : "text-red-400",
       bg: "bg-violet-500/10",
       span: "col-span-2 lg:col-span-1",
       hints: hintLines,
@@ -102,17 +91,24 @@ export function StatCards({
         ))}
       </div>
       {carryover?.label != null && (
-        <div className="mt-3 flex flex-col gap-1 rounded-lg border border-slate-700/60 bg-slate-800/40 px-3 py-2.5 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-4">
-          <span className="text-slate-400">{carryover.label}</span>
-          <span
-            className={cn(
-              "font-medium tabular-nums",
-              carryoverAmount > 0 ? "text-emerald-400" : "text-red-400"
-            )}
-          >
-            {carryoverAmount > 0 ? "+" : "−"}
-            {formatCurrency(Math.abs(carryoverAmount))}
-          </span>
+        <div className="mt-3 rounded-lg border border-slate-700/60 bg-slate-800/40 px-3 py-2.5 sm:px-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-slate-300">{carryover.label}</p>
+              <p className="text-xs text-slate-500">
+                Solo informativo · no se suma al balance del mes
+              </p>
+            </div>
+            <span
+              className={cn(
+                "text-lg font-semibold tabular-nums sm:text-base",
+                carryoverAmount > 0 ? "text-emerald-400" : "text-red-400"
+              )}
+            >
+              {carryoverAmount > 0 ? "+" : "−"}
+              {formatCurrency(Math.abs(carryoverAmount))}
+            </span>
+          </div>
         </div>
       )}
     </div>

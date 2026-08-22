@@ -83,18 +83,24 @@ export function RecurringForm({
         </div>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="recurring-amount">Importe (€)</Label>
-          <Input
-            id="recurring-amount"
-            type="number"
-            step="0.01"
-            min="0.01"
-            required
-            value={form.amount}
-            onChange={(e) => setForm({ ...form, amount: e.target.value })}
-          />
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="recurring-amount">Importe (€)</Label>
+        <Input
+          id="recurring-amount"
+          type="number"
+          step="0.01"
+          min="0.01"
+          required
+          value={form.amount}
+          onChange={(e) => setForm({ ...form, amount: e.target.value })}
+        />
+        {initial && (
+          <p className="text-xs text-slate-500">
+            El cambio aplica desde {new Date().toLocaleDateString("es-ES", { month: "long", year: "numeric" })} en adelante.
+            Los meses anteriores no se modifican.
+          </p>
+        )}
+      </div>
         <div className="space-y-2">
           <Label htmlFor="recurring-type">Tipo</Label>
           <Select

@@ -1,6 +1,7 @@
 import {
   calculateMonthlySummary,
   compareMonths,
+  dedupeSalaryTransactions,
   getMonthBounds,
   getNextMonth,
   monthKey,
@@ -22,6 +23,7 @@ import {
   reimbursementPending,
   totalPaidByUser,
 } from "@/lib/installments/helpers";
+import { matchesRecurringItem } from "@/lib/recurring/dedupe";
 import type {
   InstallmentPlan,
   MonthlySummary,
@@ -183,6 +185,35 @@ export function buildDashboardOverview(
   };
 }
 
+/** Fijos activos que aún no se han aplicado (ni omitido) en un mes. */
+export function unappliedRecurringTotals(
+  items: RecurringTransaction[],
+  appliedRecurringIds: Set<string>,
+  skippedRecurringIds: Set<string>,
+  monthTransactions: Transaction[] = []
+): { expense: number; income: number } {
+  let expense = 0;
+  let income = 0;
+
+  for (const item of items) {
+    if (!item.is_active) continue;
+    if (appliedRecurringIds.has(item.id) || skippedRecurringIds.has(item.id)) {
+      continue;
+    }
+
+    const alreadyRecorded = monthTransactions.some((tx) =>
+      matchesRecurringItem(tx, item)
+    );
+    if (alreadyRecorded) continue;
+
+    const amount = Number(item.amount);
+    if (item.type === "expense") expense += amount;
+    else income += amount;
+  }
+
+  return { expense, income };
+}
+
 export function projectedMonthlyBalance(
   overview: DashboardOverviewData
 ): number {
@@ -194,56 +225,97 @@ export function projectedMonthlyBalance(
   );
 }
 
-/** Resumen coherente: ingresos − (fijos + plazos propios) = balance del mes. */
+/** Resumen del mes: transacciones reales + plazos (compromisos solo si aún no hay movimientos). */
+export interface DisplayMonthOptions {
+  /** Mes ya cerrado: solo transacciones reales, sin proyectar fijos actuales. */
+  lockToTransactions?: boolean;
+  /** Fijos activos aún no aplicados este mes (solo mes actual/futuro). */
+  unappliedRecurringExpense?: number;
+  unappliedRecurringIncome?: number;
+}
+
 export function buildDisplayMonthSummary(
   overview: DashboardOverviewData,
-  transactionSummary: MonthlySummary
+  transactionSummary: MonthlySummary,
+  installmentInExpenses = 0,
+  options: DisplayMonthOptions = {}
 ): MonthlySummary {
-  const { recurring, installments } = overview;
-  const hasAutomaticCommitments =
-    recurring.monthlyIncomeCommitment > 0 ||
-    recurring.monthlyExpenseCommitment > 0;
+  const { installments } = overview;
+  const installmentTopUp = Math.max(
+    0,
+    installments.monthlyPaymentTotal - installmentInExpenses
+  );
+  const hasActivity =
+    transactionSummary.income > 0 || transactionSummary.expense > 0;
 
-  if (hasAutomaticCommitments) {
-    const income =
-      recurring.monthlyIncomeCommitment || transactionSummary.income;
-    const expense =
-      recurring.monthlyExpenseCommitment +
-      installments.monthlyPaymentTotal;
-    return {
-      income,
-      expense,
-      balance: income - expense,
-    };
-  }
+  // Con transacciones en el mes: no proyectar fijos encima (evita duplicar ahorro, nómina, etc.)
+  const unappliedExpense =
+    hasActivity || options.lockToTransactions
+      ? 0
+      : (options.unappliedRecurringExpense ?? 0);
+  const unappliedIncome =
+    hasActivity || options.lockToTransactions
+      ? 0
+      : (options.unappliedRecurringIncome ?? 0);
 
+  const income = transactionSummary.income + unappliedIncome;
   const expense =
-    transactionSummary.expense + installments.monthlyPaymentTotal;
+    hasActivity || options.lockToTransactions
+      ? transactionSummary.expense
+      : transactionSummary.expense + installmentTopUp + unappliedExpense;
+
   return {
-    income: transactionSummary.income,
+    income,
     expense,
-    balance: transactionSummary.income - expense,
+    balance: income - expense,
   };
 }
 
-/** Suma de cierres mensuales (compromisos − plazos) hasta el mes indicado. */
-export function computeCarryoverFromCommitments(
-  recurring: RecurringTransaction[],
-  installments: InstallmentPlan[],
+/**
+ * Arrastre = suma de cierres reales mes a mes.
+ * Meses anteriores al mes visto: solo transacciones registradas (sin proyectar fijos/plazos).
+ */
+export function computeCarryoverFromTransactions(
+  transactions: Transaction[],
+  installmentPlans: InstallmentPlan[],
+  installmentGenIdsByMonth: Map<string, string[]>,
   fromMonth: MonthRef,
-  throughMonth: MonthRef
+  throughMonth: MonthRef,
+  options?: { viewedMonth?: MonthRef }
 ): number {
   let total = 0;
   let current = fromMonth;
+  const viewedMonth = options?.viewedMonth ?? throughMonth;
 
   while (compareMonths(current, throughMonth) <= 0) {
-    const overview = buildDashboardOverview(
-      recurring,
-      installments,
-      current.month,
-      current.year
+    const { start, end } = getMonthBounds(current.year, current.month);
+    const monthTx = dedupeSalaryTransactions(
+      transactions.filter((t) => t.date >= start && t.date <= end)
     );
-    total += projectedMonthlyBalance(overview);
+    const summary = calculateMonthlySummary(monthTx);
+    const isClosedMonth = compareMonths(current, viewedMonth) < 0;
+
+    if (isClosedMonth) {
+      total += summary.balance;
+    } else {
+      const installmentsOverview = buildInstallmentsOverview(
+        installmentPlans,
+        current.month,
+        current.year
+      );
+      const genIds =
+        installmentGenIdsByMonth.get(monthKey(current.month, current.year)) ?? [];
+      const inExpenses = installmentOwnExpensesInMonth(monthTx, genIds);
+      const dueAmount = installmentsOverview.dueThisMonthAmount;
+      const monthlyCharge = inExpenses > 0 ? inExpenses : dueAmount;
+
+      total += computeMonthDisplayBalance(
+        summary,
+        monthlyCharge,
+        inExpenses
+      );
+    }
+
     if (compareMonths(current, throughMonth) === 0) break;
     current = getNextMonth(current);
   }
@@ -318,35 +390,20 @@ export function buildInstallmentGenIdsByMonth(
 
 /**
  * Balance disponible al cierre de un mes (tras cuotas a plazos),
- * encadenando arrastres desde el primer mes con datos.
+ * sumando cierres reales desde el primer mes con datos.
  */
 export function computeDisplayBalanceThroughMonth(
   transactions: Transaction[],
+  installmentPlans: InstallmentPlan[],
   installmentGenIdsByMonth: Map<string, string[]>,
-  monthlyOwnInstallmentTotal: number,
   fromMonth: MonthRef,
   throughMonth: MonthRef
 ): number {
-  let carryIn = 0;
-  let current = fromMonth;
-
-  while (compareMonths(current, throughMonth) <= 0) {
-    const { start, end } = getMonthBounds(current.year, current.month);
-    const monthTx = transactions.filter((t) => t.date >= start && t.date <= end);
-    const summary = calculateMonthlySummary(monthTx);
-    const genIds =
-      installmentGenIdsByMonth.get(monthKey(current.month, current.year)) ?? [];
-    const inExpenses = installmentOwnExpensesInMonth(monthTx, genIds);
-
-    carryIn = balanceAfterOwnInstallments(
-      summary.balance + carryIn,
-      monthlyOwnInstallmentTotal,
-      inExpenses
-    );
-
-    if (compareMonths(current, throughMonth) === 0) break;
-    current = getNextMonth(current);
-  }
-
-  return carryIn;
+  return computeCarryoverFromTransactions(
+    transactions,
+    installmentPlans,
+    installmentGenIdsByMonth,
+    fromMonth,
+    throughMonth
+  );
 }
