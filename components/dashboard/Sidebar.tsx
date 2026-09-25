@@ -5,10 +5,12 @@ import { usePathname } from "next/navigation";
 import { Wallet } from "lucide-react";
 import { navItems } from "@/components/dashboard/nav-items";
 import { InstallAppButton } from "@/components/pwa/InstallAppButton";
+import { useSelectedMonth } from "@/lib/hooks/useSelectedMonth";
 import { cn } from "@/lib/utils";
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { buildHref } = useSelectedMonth();
 
   return (
     <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:border-r lg:border-slate-700/50 lg:bg-slate-900">
@@ -28,7 +30,7 @@ export function Sidebar() {
           return (
             <Link
               key={href}
-              href={href}
+              href={buildHref(href)}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive

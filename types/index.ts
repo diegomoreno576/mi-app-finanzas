@@ -1,5 +1,7 @@
 export type TransactionType = "income" | "expense";
 export type CategoryType = "income" | "expense";
+/** Clasificación 50/30/20 para gastos. */
+export type CategoryBucket = "needs" | "wants" | "savings";
 
 export interface Transaction {
   id: string;
@@ -19,6 +21,7 @@ export interface Category {
   color: string;
   icon: string;
   type: CategoryType;
+  bucket: CategoryBucket | null;
   created_at: string;
 }
 
@@ -69,6 +72,7 @@ export interface CategoryFormData {
   color: string;
   icon: string;
   type: CategoryType;
+  bucket: CategoryBucket | null;
 }
 
 export interface TransactionFormData {

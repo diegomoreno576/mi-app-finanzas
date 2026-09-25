@@ -59,6 +59,7 @@ export function useCategories() {
       color: form.color,
       icon: form.icon,
       type: form.type,
+      bucket: form.type === "expense" ? form.bucket ?? "wants" : null,
     });
 
     if (insertError) {
@@ -82,6 +83,7 @@ export function useCategories() {
         color: form.color,
         icon: form.icon,
         type: form.type,
+        bucket: form.type === "expense" ? form.bucket ?? "wants" : null,
       })
       .eq("id", id);
 

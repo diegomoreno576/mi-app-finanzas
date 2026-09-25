@@ -4,13 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { getMonthBounds } from "@/lib/dashboard";
+import { useSelectedMonth } from "@/lib/hooks/useSelectedMonth";
 import type { Budget, BudgetWithDetails, Category } from "@/types";
 
-export function useBudgets(initialMonth?: number, initialYear?: number) {
+export function useBudgets() {
   const router = useRouter();
-  const now = new Date();
-  const [month, setMonth] = useState(initialMonth ?? now.getMonth() + 1);
-  const [year, setYear] = useState(initialYear ?? now.getFullYear());
+  const { month, year } = useSelectedMonth();
   const [budgets, setBudgets] = useState<BudgetWithDetails[]>([]);
   const [expenseCategories, setExpenseCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -144,8 +143,6 @@ export function useBudgets(initialMonth?: number, initialYear?: number) {
   return {
     month,
     year,
-    setMonth,
-    setYear,
     budgets,
     expenseCategories,
     loading,

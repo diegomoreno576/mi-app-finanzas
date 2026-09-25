@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { navItems } from "@/components/dashboard/nav-items";
+import { useSelectedMonth } from "@/lib/hooks/useSelectedMonth";
 import { cn } from "@/lib/utils";
 
 /** Rutas principales en móvil (el resto queda en el menú superior). */
 const primaryHrefs = [
   "/dashboard",
-  "/dashboard/transactions",
+  "/dashboard/movements",
   "/dashboard/recurring",
   "/dashboard/installments",
   "/dashboard/profile",
@@ -18,6 +19,7 @@ const primaryNav = navItems.filter((item) => primaryHrefs.includes(item.href));
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+  const { buildHref } = useSelectedMonth();
 
   return (
     <nav
@@ -40,7 +42,7 @@ export function MobileBottomNav() {
           return (
             <li key={href}>
               <Link
-                href={href}
+                href={buildHref(href)}
                 className={cn(
                   "flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-medium transition-colors",
                   isActive

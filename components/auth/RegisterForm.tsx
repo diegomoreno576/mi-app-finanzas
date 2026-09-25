@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getAuthRedirectUrl } from "@/lib/site-url";
@@ -13,18 +12,44 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Wallet } from "lucide-react";
 
 export function RegisterForm() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [canResend, setCanResend] = useState(false);
+
+  async function resendConfirmation() {
+    setError(null);
+    setResending(true);
+
+    const supabase = createClient();
+    const { error: resendError } = await supabase.auth.resend({
+      type: "signup",
+      email,
+      options: {
+        emailRedirectTo: getAuthRedirectUrl(),
+      },
+    });
+
+    if (resendError) {
+      setError(getAuthErrorMessage(resendError.message));
+    } else {
+      setCanResend(true);
+      setSuccess(
+        "Te hemos reenviado el correo de confirmación. Revisa tu bandeja y spam."
+      );
+    }
+    setResending(false);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSuccess(null);
+    setCanResend(false);
 
     if (password !== confirmPassword) {
       setError("Las contraseñas no coinciden.");
@@ -53,15 +78,31 @@ export function RegisterForm() {
       return;
     }
 
+    // Nunca entrar sin confirmar: si Supabase devolvió sesión, cerrarla.
     if (data.session) {
-      router.push("/dashboard");
-      router.refresh();
+      await supabase.auth.signOut();
+    }
+
+    // Si el proyecto no exige confirmación, Supabase marca el email como confirmado.
+    if (data.user?.email_confirmed_at) {
+      setSuccess("Cuenta creada. Ya puedes iniciar sesión.");
+      setLoading(false);
       return;
     }
 
-    setSuccess(
-      "Cuenta creada. Revisa tu email para confirmar el registro antes de iniciar sesión."
-    );
+    // Supabase no envía email si el usuario ya existe: identities viene vacío.
+    const alreadyRegistered = (data.user?.identities?.length ?? 0) === 0;
+
+    setCanResend(true);
+    if (alreadyRegistered) {
+      setSuccess(
+        "Este email ya está registrado. Si aún no confirmaste la cuenta, reenvía el correo."
+      );
+    } else {
+      setSuccess(
+        "Cuenta creada. Revisa tu correo para confirmar el registro antes de iniciar sesión."
+      );
+    }
     setLoading(false);
   }
 
@@ -84,8 +125,18 @@ export function RegisterForm() {
             </div>
           )}
           {success && (
-            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
-              {success}
+            <div className="space-y-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
+              <p>{success}</p>
+              {canResend && (
+                <button
+                  type="button"
+                  disabled={resending || !email}
+                  onClick={resendConfirmation}
+                  className="font-medium text-emerald-300 underline underline-offset-2 hover:text-emerald-200 disabled:opacity-50"
+                >
+                  {resending ? "Reenviando…" : "Reenviar correo"}
+                </button>
+              )}
             </div>
           )}
           <div className="space-y-2">

@@ -6,19 +6,19 @@ import {
   compareMonths,
   dedupeSalaryTransactions,
   getCarryoverFetchStart,
-  getCurrentMonthYear,
   getLastSixMonths,
   getMonthBounds,
   earliestMonth,
   monthKey,
   getPreviousMonth,
   getPreviousMonthCarryover,
-  groupExpensesByCategory,
   resolveFirstTrackedMonth,
   shouldAutoApplyMonth,
   shouldShowPreviousMonthCarryover,
+  getCurrentMonthYear,
 } from "@/lib/dashboard";
-import { formatCurrency, getMonthName } from "@/lib/format";
+import { resolveMonthYear } from "@/lib/selected-month";
+import { getMonthName } from "@/lib/format";
 import { applyRecurringForMonth } from "@/lib/recurring/apply";
 import { dedupeRecurringTransactions } from "@/lib/recurring/dedupe";
 import { applyInstallmentsForMonth } from "@/lib/installments/apply";
@@ -32,10 +32,8 @@ import {
 } from "@/lib/dashboard-overview";
 import { StatCards } from "@/components/dashboard/StatCards";
 import { DashboardOverview } from "@/components/dashboard/DashboardOverview";
-import { ExpenseDonutChart } from "@/components/dashboard/ExpenseDonutChart";
 import { IncomeExpenseBarChart } from "@/components/dashboard/IncomeExpenseBarChart";
 import { RecentTransactionsInteractive } from "@/components/dashboard/RecentTransactionsInteractive";
-import { DashboardMonthPicker } from "@/components/dashboard/DashboardMonthPicker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { InstallmentPlan, RecurringTransaction, Transaction } from "@/types";
 
@@ -47,12 +45,7 @@ interface DashboardPageProps {
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const params = await searchParams;
-  const current = getCurrentMonthYear();
-  const month = params.month ? Number(params.month) : current.month;
-  const year = params.year ? Number(params.year) : current.year;
-
-  const safeMonth = month >= 1 && month <= 12 ? month : current.month;
-  const safeYear = year >= 2000 && year <= 2100 ? year : current.year;
+  const { month: safeMonth, year: safeYear } = resolveMonthYear(params);
 
   const supabase = await createClient();
   const {
@@ -174,7 +167,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     earliestTx?.date,
     earliestMonth(generationMonths)
   );
-  const expensesByCategory = groupExpensesByCategory(monthTx);
   const monthlyComparison = buildMonthlyComparisons(
     historyTx,
     getLastSixMonths()
@@ -263,14 +255,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   return (
     <div className="space-y-5 sm:space-y-8">
-      <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-white sm:text-2xl">Dashboard</h1>
-          <p className="text-sm text-slate-400">Resumen de tus finanzas</p>
-        </div>
-        <Suspense fallback={null}>
-          <DashboardMonthPicker month={safeMonth} year={safeYear} />
-        </Suspense>
+      <div>
+        <h1 className="text-xl font-bold text-white sm:text-2xl">Dashboard</h1>
+        <p className="text-sm text-slate-400">
+          Resumen de tus finanzas · {monthLabel}
+        </p>
       </div>
 
       <StatCards
@@ -280,49 +269,33 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         installmentMonthlyCommitment={overview.installments.monthlyPaymentTotal}
       />
 
-      <DashboardOverview data={overview} monthLabel={monthLabel} />
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Gastos por categoría</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ExpenseDonutChart data={expensesByCategory} />
-            {expensesByCategory.length > 0 && (
-              <ul className="mt-4 space-y-2">
-                {expensesByCategory.map((item) => (
-                  <li
-                    key={item.category}
-                    className="flex justify-between text-sm text-slate-400"
-                  >
-                    <span>{item.category}</span>
-                    <span className="font-medium text-red-400">
-                      {formatCurrency(item.amount)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Ingresos vs gastos (6 meses)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <IncomeExpenseBarChart data={monthlyComparison} />
-          </CardContent>
-        </Card>
-      </div>
+      <DashboardOverview
+        data={overview}
+        monthLabel={monthLabel}
+        month={safeMonth}
+        year={safeYear}
+      />
 
       <Card>
         <CardHeader>
-          <CardTitle>Últimas transacciones</CardTitle>
+          <CardTitle>Ingresos vs gastos (6 meses)</CardTitle>
         </CardHeader>
         <CardContent>
-          <RecentTransactionsInteractive transactions={recentTx} />
+          <IncomeExpenseBarChart data={monthlyComparison} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Movimientos</CardTitle>
+          <p className="text-sm text-slate-400">
+            Gastos e ingresos puntuales del periodo (además de fijos y plazos)
+          </p>
+        </CardHeader>
+        <CardContent>
+          <Suspense fallback={null}>
+            <RecentTransactionsInteractive transactions={recentTx} />
+          </Suspense>
         </CardContent>
       </Card>
     </div>

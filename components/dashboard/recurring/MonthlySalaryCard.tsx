@@ -81,8 +81,8 @@ export function MonthlySalaryCard({
             </Button>
           </div>
           <p className="mt-3 text-xs text-slate-500">
-            Los ingresos extra (freelance, regalos, etc.) añádelos en Transacciones
-            cuando ocurran.
+            Los ingresos extra (freelance, regalos, etc.) configúralos como fijo
+            de ingreso cuando se repitan.
           </p>
         </CardContent>
       </Card>
@@ -99,8 +99,8 @@ export function MonthlySalaryCard({
           <div>
             <p className="font-medium text-emerald-200">Configura tu nómina</p>
             <p className="text-sm text-slate-400">
-              Una sola vez. Cada mes se registra sola; los extras los añades tú
-              en Transacciones.
+              Una sola vez. Cada mes se registra sola; los extras recurrentes
+              añádelos como otro fijo de ingreso.
             </p>
           </div>
         </div>

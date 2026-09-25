@@ -11,16 +11,26 @@ import {
 import { formatCurrency, formatDate } from "@/lib/format";
 import type { DashboardOverviewData } from "@/lib/dashboard-overview";
 import { projectedMonthlyBalance } from "@/lib/dashboard-overview";
+import { hrefWithMonth } from "@/lib/selected-month";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface DashboardOverviewProps {
   data: DashboardOverviewData;
   monthLabel: string;
+  month: number;
+  year: number;
 }
 
-export function DashboardOverview({ data, monthLabel }: DashboardOverviewProps) {
+export function DashboardOverview({
+  data,
+  monthLabel,
+  month,
+  year,
+}: DashboardOverviewProps) {
   const { recurring, installments } = data;
   const projected = projectedMonthlyBalance(data);
+  const recurringHref = hrefWithMonth("/dashboard/recurring", month, year);
+  const installmentsHref = hrefWithMonth("/dashboard/installments", month, year);
   const hasRecurring =
     recurring.salaryConfigured ||
     recurring.subscriptionsCount > 0 ||
@@ -42,13 +52,13 @@ export function DashboardOverview({ data, monthLabel }: DashboardOverviewProps) 
           </div>
           <div className="flex flex-wrap gap-2">
             <Link
-              href="/dashboard/recurring"
+              href={recurringHref}
               className="rounded-lg bg-violet-600/30 px-3 py-2 text-sm text-violet-200 hover:bg-violet-600/40"
             >
               Fijos mensuales
             </Link>
             <Link
-              href="/dashboard/installments"
+              href={installmentsHref}
               className="rounded-lg bg-violet-600/30 px-3 py-2 text-sm text-violet-200 hover:bg-violet-600/40"
             >
               Plazos y favores
@@ -82,7 +92,7 @@ export function DashboardOverview({ data, monthLabel }: DashboardOverviewProps) 
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-base">Fijos mensuales</CardTitle>
             <Link
-              href="/dashboard/recurring"
+              href={recurringHref}
               className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300"
             >
               Gestionar
@@ -101,7 +111,7 @@ export function DashboardOverview({ data, monthLabel }: DashboardOverviewProps) 
                 </span>
               ) : (
                 <Link
-                  href="/dashboard/recurring"
+                  href={recurringHref}
                   className="text-xs text-slate-500 hover:text-violet-300"
                 >
                   Configurar →
@@ -167,7 +177,7 @@ export function DashboardOverview({ data, monthLabel }: DashboardOverviewProps) 
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-base">Plazos y favores</CardTitle>
             <Link
-              href="/dashboard/installments"
+              href={installmentsHref}
               className="flex items-center gap-1 text-xs text-violet-400 hover:text-violet-300"
             >
               Gestionar

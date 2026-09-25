@@ -20,6 +20,7 @@ import {
   TrendingUp,
   Utensils,
   Wallet,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -43,6 +44,7 @@ export const CATEGORY_ICON_OPTIONS = [
   "wallet",
   "credit-card",
   "piggy-bank",
+  "zap",
   "circle",
 ] as const;
 
@@ -66,6 +68,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   wallet: Wallet,
   "credit-card": CreditCard,
   "piggy-bank": PiggyBank,
+  zap: Zap,
   circle: Circle,
 };
 

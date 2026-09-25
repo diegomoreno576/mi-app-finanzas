@@ -7,12 +7,14 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { navItems } from "@/components/dashboard/nav-items";
 import { InstallAppButton } from "@/components/pwa/InstallAppButton";
+import { useSelectedMonth } from "@/lib/hooks/useSelectedMonth";
 import { cn } from "@/lib/utils";
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
+  const { buildHref } = useSelectedMonth();
 
   useEffect(() => setMounted(true), []);
 
@@ -62,7 +64,7 @@ export function MobileNav() {
                 return (
                   <Link
                     key={href}
-                    href={href}
+                    href={buildHref(href)}
                     onClick={() => setOpen(false)}
                     className={cn(
                       "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors",

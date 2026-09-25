@@ -11,6 +11,7 @@ import { ConfirmDeleteModal } from "@/components/ui/confirm-delete-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/dashboard/EmptyState";
 import { CategoryForm } from "@/components/dashboard/categories/CategoryForm";
+import { BUCKET_LABELS } from "@/lib/financial-health";
 import type { Category, CategoryType } from "@/types";
 
 function CategorySection({
@@ -55,7 +56,14 @@ function CategorySection({
                       style={{ color: cat.color }}
                     />
                   </div>
-                  <span className="font-medium text-slate-100">{cat.name}</span>
+                  <div className="min-w-0">
+                    <span className="font-medium text-slate-100">{cat.name}</span>
+                    {cat.type === "expense" && cat.bucket && (
+                      <p className="text-xs text-slate-500">
+                        {BUCKET_LABELS[cat.bucket]}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <div className="flex gap-1">
                   <Button

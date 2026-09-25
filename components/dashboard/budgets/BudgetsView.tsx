@@ -21,8 +21,6 @@ export function BudgetsView() {
   const {
     month,
     year,
-    setMonth,
-    setYear,
     budgets,
     expenseCategories,
     loading,
@@ -43,10 +41,6 @@ export function BudgetsView() {
     null
   );
   const [deleting, setDeleting] = useState(false);
-
-  const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1);
-  const currentYear = new Date().getFullYear();
-  const yearOptions = [currentYear - 1, currentYear, currentYear + 1];
 
   const budgetedCategoryIds = new Set(budgets.map((b) => b.category_id));
   const availableCategories = expenseCategories.filter(
@@ -132,37 +126,6 @@ export function BudgetsView() {
           Añadir presupuesto
         </Button>
       </div>
-
-      <Card>
-        <CardContent className="flex flex-wrap gap-4 p-4">
-          <div className="min-w-[140px] flex-1 space-y-1">
-            <label className="text-xs text-slate-400">Mes</label>
-            <Select
-              value={month}
-              onChange={(e) => setMonth(Number(e.target.value))}
-            >
-              {monthOptions.map((m) => (
-                <option key={m} value={m}>
-                  {getMonthName(m, year)}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="min-w-[100px] flex-1 space-y-1">
-            <label className="text-xs text-slate-400">Año</label>
-            <Select
-              value={year}
-              onChange={(e) => setYear(Number(e.target.value))}
-            >
-              {yearOptions.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
 
       {error && (
         <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">

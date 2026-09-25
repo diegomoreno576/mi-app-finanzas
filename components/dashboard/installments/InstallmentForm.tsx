@@ -344,7 +344,7 @@ export function InstallmentForm({
           />
           <p className="text-xs text-slate-500">
             Cuota total al financiador: {form.installment_amount || "—"} €. Solo tu
-            parte se registrará en Transacciones.
+            parte se registrará en el resumen mensual.
           </p>
         </div>
       )}

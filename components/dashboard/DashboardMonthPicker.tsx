@@ -1,37 +1,24 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
 import { Select } from "@/components/ui/select";
 import { getMonthName } from "@/lib/format";
+import { useSelectedMonth } from "@/lib/hooks/useSelectedMonth";
 
-interface DashboardMonthPickerProps {
-  month: number;
-  year: number;
-}
-
-export function DashboardMonthPicker({ month, year }: DashboardMonthPickerProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+/** Selector global del mes de la app (escribe URL + cookie). */
+export function DashboardMonthPicker() {
+  const { month, year, setSelectedMonth } = useSelectedMonth();
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1);
   const currentYear = new Date().getFullYear();
   const yearOptions = [currentYear - 1, currentYear, currentYear + 1];
 
-  function updatePeriod(newMonth: number, newYear: number) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("month", String(newMonth));
-    params.set("year", String(newYear));
-    router.push(`/dashboard?${params.toString()}`);
-    router.refresh();
-  }
-
   return (
-    <div className="grid w-full grid-cols-2 gap-3">
+    <div className="grid w-full grid-cols-2 gap-3 sm:max-w-xs">
       <div className="min-w-0 space-y-1">
-        <label className="text-xs text-slate-400">Mes del resumen</label>
+        <label className="text-xs text-slate-400">Mes</label>
         <Select
           value={month}
-          onChange={(e) => updatePeriod(Number(e.target.value), year)}
+          onChange={(e) => setSelectedMonth(Number(e.target.value), year)}
         >
           {monthOptions.map((m) => (
             <option key={m} value={m}>
@@ -44,7 +31,7 @@ export function DashboardMonthPicker({ month, year }: DashboardMonthPickerProps)
         <label className="text-xs text-slate-400">Año</label>
         <Select
           value={year}
-          onChange={(e) => updatePeriod(month, Number(e.target.value))}
+          onChange={(e) => setSelectedMonth(month, Number(e.target.value))}
         >
           {yearOptions.map((y) => (
             <option key={y} value={y}>

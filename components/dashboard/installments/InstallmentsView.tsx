@@ -10,7 +10,9 @@ import {
 } from "lucide-react";
 import { useInstallments } from "@/lib/hooks/useInstallments";
 import { useCategories } from "@/lib/hooks/useCategories";
-import { formatCurrency } from "@/lib/format";
+import { useSelectedMonth } from "@/lib/hooks/useSelectedMonth";
+import { shouldAutoApplyMonth } from "@/lib/dashboard";
+import { formatCurrency, getMonthName } from "@/lib/format";
 import {
   buildMonthlyBreakdownByPerson,
   dueThisMonthTotal,
@@ -44,6 +46,8 @@ export function InstallmentsView() {
     applyForMonth,
   } = useInstallments();
   const { categories } = useCategories();
+  const { month, year } = useSelectedMonth();
+  const canApply = shouldAutoApplyMonth(month, year);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<InstallmentPlan | null>(null);
@@ -52,10 +56,6 @@ export function InstallmentsView() {
   const [applying, setApplying] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<InstallmentPlan | null>(null);
   const [deleting, setDeleting] = useState(false);
-
-  const now = new Date();
-  const month = now.getMonth() + 1;
-  const year = now.getFullYear();
 
   const filtered = useMemo(() => {
     if (filter === "all") return items;
@@ -97,8 +97,8 @@ export function InstallmentsView() {
 
     setApplyMessage(
       result.created > 0
-        ? `Se registraron ${result.created} cuota(s) de este mes.`
-        : "No había cuotas pendientes para este mes."
+        ? `Se registraron ${result.created} cuota(s) de ${getMonthName(month, year)}.`
+        : `No había cuotas pendientes para ${getMonthName(month, year)}.`
     );
   }
 
@@ -146,8 +146,7 @@ export function InstallmentsView() {
         <div>
           <h1 className="text-2xl font-bold text-white">Plazos y favores</h1>
           <p className="text-slate-400">
-            Cofidis, Klarna, Pepper, Aplázame y más. Para ti, favores o pago
-            compartido.
+            Cofidis, Klarna, Pepper, Aplázame y más · {getMonthName(month, year)}
           </p>
         </div>
         <Button onClick={openCreate}>
@@ -197,7 +196,9 @@ export function InstallmentsView() {
               <CalendarClock className="h-5 w-5 text-indigo-400" />
             </div>
             <div>
-              <p className="text-sm text-slate-400">Cuotas este mes</p>
+              <p className="text-sm text-slate-400">
+                Cuotas en {getMonthName(month, year)}
+              </p>
               <p className="text-xl font-bold text-indigo-300">
                 {dueThisMonthCount > 0
                   ? formatCurrency(dueThisMonthAmount)
@@ -206,7 +207,7 @@ export function InstallmentsView() {
               <p className="text-xs text-slate-500">
                 {dueThisMonthCount > 0
                   ? `${dueThisMonthCount} cuota${dueThisMonthCount === 1 ? "" : "s"} · resta del balance al aplicar`
-                  : "Ninguna vence este mes"}
+                  : `Ninguna vence en ${getMonthName(month, year)}`}
               </p>
               <Button
                 variant="ghost"
@@ -214,8 +215,9 @@ export function InstallmentsView() {
                 className="mt-1 h-auto p-0 text-xs text-indigo-300"
                 onClick={handleApplyMonth}
                 loading={applying}
+                disabled={!canApply}
               >
-                Aplicar ahora
+                {canApply ? "Aplicar ahora" : "Mes pasado"}
               </Button>
             </div>
           </CardContent>

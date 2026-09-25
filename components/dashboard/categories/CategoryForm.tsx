@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { CATEGORY_ICON_OPTIONS, CategoryIcon } from "@/lib/icons";
-import type { Category, CategoryFormData } from "@/types";
+import { BUCKET_LABELS } from "@/lib/financial-health";
+import type { Category, CategoryBucket, CategoryFormData } from "@/types";
 
 interface CategoryFormProps {
   initial?: Category;
@@ -25,13 +26,16 @@ function toFormData(
       color: initial.color,
       icon: initial.icon,
       type: initial.type,
+      bucket: initial.bucket,
     };
   }
+  const type = defaultType ?? "expense";
   return {
     name: "",
     color: "#7c3aed",
     icon: "circle",
-    type: defaultType ?? "expense",
+    type,
+    bucket: type === "expense" ? "wants" : null,
   };
 }
 
@@ -57,7 +61,10 @@ export function CategoryForm({
     }
 
     setLoading(true);
-    const result = await onSubmit(form);
+    const result = await onSubmit({
+      ...form,
+      bucket: form.type === "expense" ? form.bucket ?? "wants" : null,
+    });
     setLoading(false);
 
     if (result.error) setError(result.error);
@@ -85,16 +92,40 @@ export function CategoryForm({
           <Select
             id="type"
             value={form.type}
-            onChange={(e) =>
+            onChange={(e) => {
+              const type = e.target.value as CategoryFormData["type"];
               setForm({
                 ...form,
-                type: e.target.value as CategoryFormData["type"],
-              })
-            }
+                type,
+                bucket: type === "expense" ? form.bucket ?? "wants" : null,
+              });
+            }}
           >
             <option value="expense">Gasto</option>
             <option value="income">Ingreso</option>
           </Select>
+        </div>
+      )}
+      {form.type === "expense" && (
+        <div className="space-y-2">
+          <Label htmlFor="bucket">Tipo 50/30/20</Label>
+          <Select
+            id="bucket"
+            value={form.bucket ?? "wants"}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                bucket: e.target.value as CategoryBucket,
+              })
+            }
+          >
+            <option value="needs">{BUCKET_LABELS.needs} (50%)</option>
+            <option value="wants">{BUCKET_LABELS.wants} (30%)</option>
+            <option value="savings">{BUCKET_LABELS.savings} (20%)</option>
+          </Select>
+          <p className="text-xs text-slate-500">
+            Clasifica el gasto para medir tu salud financiera.
+          </p>
         </div>
       )}
       <div className="space-y-2">

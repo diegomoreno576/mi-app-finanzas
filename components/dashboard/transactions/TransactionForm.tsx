@@ -12,19 +12,20 @@ import type { Category, Transaction, TransactionFormData } from "@/types";
 interface TransactionFormProps {
   categories: Category[];
   initial?: Transaction;
+  /** Fecha inicial al crear (YYYY-MM-DD). */
+  defaultDate?: string;
   onSubmit: (data: TransactionFormData) => Promise<{ error: string | null }>;
   onCancel: () => void;
 }
 
-function toFormData(tx?: Transaction): TransactionFormData {
+function toFormData(tx?: Transaction, defaultDate?: string): TransactionFormData {
   if (!tx) {
-    const today = getTodayLocal();
     return {
       amount: "",
       type: "expense",
       category: "",
       description: "",
-      date: today,
+      date: defaultDate ?? getTodayLocal(),
     };
   }
   return {
@@ -39,10 +40,13 @@ function toFormData(tx?: Transaction): TransactionFormData {
 export function TransactionForm({
   categories,
   initial,
+  defaultDate,
   onSubmit,
   onCancel,
 }: TransactionFormProps) {
-  const [form, setForm] = useState<TransactionFormData>(() => toFormData(initial));
+  const [form, setForm] = useState<TransactionFormData>(() =>
+    toFormData(initial, defaultDate)
+  );
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 

@@ -19,6 +19,9 @@ import {
   isSubscriptionRecurring,
   SUBSCRIPTION_CATEGORY,
 } from "@/lib/recurring/subscriptions";
+import { useSelectedMonth } from "@/lib/hooks/useSelectedMonth";
+import { shouldAutoApplyMonth } from "@/lib/dashboard";
+import { getMonthName } from "@/lib/format";
 import type { RecurringFormData, RecurringTransaction } from "@/types";
 
 type ModalMode = "generic" | "subscription";
@@ -35,6 +38,8 @@ export function RecurringView() {
     applyForMonth,
   } = useRecurring();
   const { categories } = useCategories();
+  const { month, year } = useSelectedMonth();
+  const canApply = shouldAutoApplyMonth(month, year);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<ModalMode>("generic");
@@ -58,10 +63,6 @@ export function RecurringView() {
     const item = items.find((i) => i.id === id);
     if (item) setDeleteTarget(item);
   }
-
-  const now = new Date();
-  const month = now.getMonth() + 1;
-  const year = now.getFullYear();
 
   const expenses = items.filter((i) => i.type === "expense");
   const otherExpenses = expenses.filter((i) => !isSubscriptionRecurring(i));
@@ -142,8 +143,8 @@ export function RecurringView() {
         <div>
           <h1 className="text-2xl font-bold text-white">Fijos mensuales</h1>
           <p className="text-slate-400">
-            Nómina, suscripciones y otros gastos que se repiten. Ingresos extra →
-            Transacciones.
+            Nómina, suscripciones y otros gastos o ingresos que se repiten ·{" "}
+            {getMonthName(month, year)}
           </p>
         </div>
         <Button onClick={openCreate}>
@@ -175,8 +176,9 @@ export function RecurringView() {
             <div>
               <p className="font-medium text-violet-200">Generación automática</p>
               <p className="text-sm text-slate-400">
-                Al abrir el dashboard se aplican los fijos del mes actual. También
-                puedes forzarlo aquí.
+                {canApply
+                  ? `Aplica los fijos activos a ${getMonthName(month, year)}. El dashboard también lo hace al abrir el periodo.`
+                  : `${getMonthName(month, year)} es un mes pasado: no se regeneran fijos automáticamente.`}
               </p>
             </div>
           </div>
@@ -184,10 +186,11 @@ export function RecurringView() {
             variant="secondary"
             onClick={handleApplyMonth}
             loading={applying}
+            disabled={!canApply}
             className="shrink-0"
           >
             <CalendarClock className="h-4 w-4" />
-            Aplicar este mes
+            Aplicar {getMonthName(month, year)}
           </Button>
         </CardContent>
       </Card>

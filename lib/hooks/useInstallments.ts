@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { shouldAutoApplyMonth } from "@/lib/dashboard";
 import { applyInstallmentsForMonth } from "@/lib/installments/apply";
 import { deleteTransactionsForInstallment } from "@/lib/transactions/delete-linked";
 import type {
@@ -261,6 +262,13 @@ export function useInstallments() {
   }
 
   async function applyForMonth(month: number, year: number) {
+    if (!shouldAutoApplyMonth(month, year)) {
+      return {
+        error: "No se pueden generar cuotas en meses pasados.",
+        created: 0,
+      };
+    }
+
     const supabase = createClient();
     const {
       data: { user },
